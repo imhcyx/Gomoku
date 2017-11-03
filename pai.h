@@ -18,6 +18,7 @@
 
 #define ROLE_BLACK 0
 #define ROLE_WHITE 1
+#define ROLE_MAX   2
 
 /* Player structure */
 
@@ -59,18 +60,22 @@ typedef void (*PAI_PLAYER_CALLBACK)(pai_player*, pos*, void*);
  * role: black or white
  * callback: the callback function
  *
+ * Return value: nonzero on success, zero on failure
+ *
  */
 
-void pai_register_player(int role, PAI_PLAYER_CALLBACK callback);
+int pai_register_player(int role, PAI_PLAYER_CALLBACK callback);
 
 /* TODO: set timeout */
 
 /*
  * pai_start_game: Start the game
  *
+ * Return value: nonzero on success, zero on failure
+ *
  */
 
-void pai_start_game();
+int pai_start_game();
 
 /*
  * pai_do_step: Place a piece on specified position
