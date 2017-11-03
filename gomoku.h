@@ -21,3 +21,7 @@ typedef struct {
 #define I_BLACK 1
 #define I_WHITE 2
 
+/* Include other header files */
+
+#include "pai.h"
+

@@ -12,8 +12,6 @@
  *
  */
 
-#include "gomoku.h"
-
 /* Role constants */
 
 #define ROLE_BLACK 0

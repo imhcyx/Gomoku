@@ -3,7 +3,7 @@
  *
  */
 
-#include "pai.h"
+#include "gomoku.h"
 
 typedef struct {
   pai_player *player;
