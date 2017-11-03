@@ -18,27 +18,11 @@
 #define ROLE_WHITE 1
 #define ROLE_MAX   2
 
-/* Player structure */
-
-typedef struct {
-
-  /* Black or white */
-  int role;
-
-  /* Maximum execution time for the callback */
-  /* (in milliseconds). 0 means no limits. */
-  int timeout;
-
-  /* User-defined data for the callback */
-  void *userdata;
-
-} pai_player;
-
 /* Player callback */
 
 /* The callback function should be defined like this:
- * void callback(pai_player *player, pos *newpos, void *userdata);
- * player: the player structure
+ * void callback(int role, pos *newpos, void *userdata);
+ * role: black or white
  * newpos: the intersection most recently placed on
  *         by the opponent
  * userdata: user-defined data in pai_register_player
@@ -48,7 +32,7 @@ typedef struct {
  *
  */
 
-typedef void (*PAI_PLAYER_CALLBACK)(pai_player*, pos*, void*);
+typedef void (*PAI_PLAYER_CALLBACK)(int, pos*, void*);
 
 /* Public functions */
 
@@ -57,12 +41,13 @@ typedef void (*PAI_PLAYER_CALLBACK)(pai_player*, pos*, void*);
  * 
  * role: black or white
  * callback: the callback function
+ * userdata: user-defined data to pass to the callback
  *
  * Return value: nonzero on success, zero on failure
  *
  */
 
-int pai_register_player(int role, PAI_PLAYER_CALLBACK callback);
+int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata);
 
 /* TODO: set timeout */
 

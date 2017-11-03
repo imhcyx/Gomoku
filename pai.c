@@ -6,16 +6,17 @@
 #include "gomoku.h"
 
 typedef struct {
-  pai_player *player;
-  int timeout;
   PAI_PLAYER_CALLBACK callback;
+  void *userdata;
+  int timeout;
 } playerinfo;
 
 playerinfo g_player[ROLE_MAX] = {0}; /* ROLE_BLACK, ROLE_WHITE */
 
-int pai_register_player(int role, PAI_PLAYER_CALLBACK callback) {
+int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata) {
   if (role <= 0 || role >= ROLE_MAX) return 0;
   g_player[role].callback = callback;
+  g_player[role].userdata = userdata;
   return 1;
 }
 
