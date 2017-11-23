@@ -2,11 +2,17 @@
  * gomoku.h: General definitions
  *
  */
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
 
-/* Chessboard dimensions */
+/* Chessboard definitions */
 
 #define BOARD_W 15
 #define BOARD_H 15
+
+typedef char board_t[BOARD_W][BOARD_H];
 
 /* Position structure */
 

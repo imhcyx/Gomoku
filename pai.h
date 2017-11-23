@@ -18,21 +18,36 @@
 #define ROLE_WHITE 1
 #define ROLE_MAX   2
 
+/* Action constants */
+
+#define ACTION_CLEANUP -1 /* only received on exiting */
+#define ACTION_GIVEUP 1
+#define ACTION_PLACE 2
+#define ACTION_UNPLACE 3
+
 /* Player callback */
 
 /* The callback function should be defined like this:
- * void callback(int role, pos *newpos, void *userdata);
- * role: black or white
- * newpos: the intersection most recently placed on
- *         by the opponent
+ * int callback(int role, int action, pos *lastpos, pos *newpos, board_t *board, void *userdata);
+ * role: role of self
+ * action: the most recent action
+           0 if no previous action is available
+ * lastpos: the position recently affected
+ * newpos: the position to be affected
+ * board: the board for the player
+ *        can be modified arbitrarily
  * userdata: user-defined data in pai_register_player
  *
- * Note: if no placement is done in a callback, the player
- *       is considered to give up this game.
+ * Return value: the action by the player
+ *
+ * Note:
+ * 1. if the action made by the opponent is ACTION_UNPLACE,
+ *    newpos and the return value are ignored.
+ * 2. if action is ACTION_CLEANUP, the following 4 arguments are NULL.
  *
  */
 
-typedef void (*PAI_PLAYER_CALLBACK)(int, pos*, void*);
+typedef int (*PAI_PLAYER_CALLBACK)(int, int, pos*, pos*, board_t*, void*);
 
 /* Public functions */
 
@@ -49,32 +64,11 @@ typedef void (*PAI_PLAYER_CALLBACK)(int, pos*, void*);
 
 int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata);
 
-/* TODO: set timeout */
-
 /*
  * pai_start_game: Start the game
  *
- * Return value: nonzero on success, zero on failure
+ * Return value: negative on failure, otherwise the winner role
  *
  */
 
 int pai_start_game();
-
-/*
- * pai_do_step: Place a piece on specified position
- * (Can only be called in the callback)
- * Return value: nonzero on success, zero on failure
- *               (Typically on multiple placement in
- *               a turn)
- *
- */
-
-int pai_do_step(pos *newpos);
-
-/*
- * pai_undo_step: Undo a placement
- * (Can only be called in the callback)
- */
-
-void pai_undo_step();
-
