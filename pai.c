@@ -3,7 +3,7 @@
  *
  */
 
-#include "gomoku.h"
+#include "pai.h"
 
 #define CHANGEROLE(x) x = (x == ROLE_BLACK ? ROLE_WHITE : ROLE_BLACK)
 #define ROLE2ISTATUS(x) (x == ROLE_BLACK ? I_BLACK : I_WHITE)

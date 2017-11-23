@@ -2,10 +2,13 @@
  * gomoku.h: General definitions
  *
  */
- 
- #include <stdio.h>
- #include <stdlib.h>
- #include <string.h>
+
+#ifndef GOMOKU_H
+#define GOMOKU_H
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* Chessboard definitions */
 
@@ -27,7 +30,4 @@ typedef struct {
 #define I_BLACK 1
 #define I_WHITE 2
 
-/* Include other header files */
-
-#include "pai.h"
-
+#endif /* GOMOKU_H */

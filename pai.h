@@ -3,6 +3,11 @@
  *
  */
 
+#ifndef PAI_H
+#define PAI_H
+
+#include "gomoku.h"
+
 /*
  * About Player Abstract Interface
  * Participants are abstracted as a player, which
@@ -72,3 +77,5 @@ int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata);
  */
 
 int pai_start_game();
+
+#endif /* PAI_H */
