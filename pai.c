@@ -17,7 +17,7 @@ static board_t m_playerboard[ROLE_MAX];
 
 /* -1 if no winner, otherwise the role number */
 static int judge() {
-  /* TODO */
+  /* TODO: implement this function in a new module */
 }
 
 int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata) {
@@ -58,12 +58,14 @@ int pai_start_game() {
       if (m_board[newpos.x][newpos.y] == I_FREE) {
         /* do placement */
         m_board[newpos.x][newpos.y] = ROLE2ISTATUS(role);
+        /* TODO: record step */
       }
       else {
         /* we should not get here */
         fprintf(stderr, "pai: invalid placement on (%d,%d) by %d\n", newpos.x, newpos.y, role);
         break;
       }
+      /* TODO: check bans */
       /* judge */
       if ((winner = judge()) >= 0)
         running = 0;
@@ -71,16 +73,7 @@ int pai_start_game() {
       CHANGEROLE(role);
       break;
     case ACTION_UNPLACE:
-      /* check availability */
-      if (m_board[newpos.x][newpos.y] == ROLE2ISTATUS(role)) {
-        /* do unplacement */
-        m_board[newpos.x][newpos.y] = I_FREE;
-      }
-      else {
-        /* we should not get here */
-        fprintf(stderr, "pai: invalid unplacement on (%d,%d) by %d\n", newpos.x, newpos.y, role);
-        break;
-      }
+      /* TODO: do unplacement from step record */
       /* inform opponent without changing the role */
       CHANGEROLE(role);
       memcpy(&m_playerboard[role], &m_board, sizeof(board_t));

@@ -26,6 +26,7 @@
 /* Action constants */
 
 #define ACTION_CLEANUP -1 /* only received on exiting */
+#define ACTION_NONE 0
 #define ACTION_GIVEUP 1
 #define ACTION_PLACE 2
 #define ACTION_UNPLACE 3
@@ -36,19 +37,36 @@
  * int callback(int role, int action, pos *lastpos, pos *newpos, board_t *board, void *userdata);
  * role: role of self
  * action: the most recent action
-           0 if no previous action is available
  * lastpos: the position recently affected
  * newpos: the position to be affected
  * board: the board for the player
  *        can be modified arbitrarily
  * userdata: user-defined data in pai_register_player
  *
- * Return value: the action by the player
+ * Return value: the action made by the player
  *
- * Note:
- * 1. if the action made by the opponent is ACTION_UNPLACE,
- *    newpos and the return value are ignored.
- * 2. if action is ACTION_CLEANUP, the following 4 arguments are NULL.
+ * About actions
+ * 
+ * ACTION_CLEANUP:
+ *  Received on exiting. Cannot be used as return value of callback.
+ *  All cleanup work must be done. lastpos, newpos, board are unused.
+ *
+ * ACTION_NONE:
+ *  Received when no previous action is avaliable. Cannot be used as return value of callback.
+ *  lastpos is unused.
+ *
+ * ACTION_GIVEUP:
+ *  Callback function should return this when the player gives up.
+ *  The opponent will receive this with lastpos unused.
+ *
+ * ACTION_PLACE:
+ *  This action can be received or returned. When received, lastpos indicates previously
+ *  position placed on; when returned, newpos must be set to the position to place on.
+ *
+ * ACTION_UNPLACE:
+ *  This action can be received or returned. When received, an unplacement by the opponent
+ *  is indicated, with lastpos and newpos unused and return value ignored; when returned,
+ *  the recent turn is undone with newpos unused, or it is ignored if no undo can be performed.
  *
  */
 
