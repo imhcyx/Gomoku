@@ -50,27 +50,59 @@ static int cli_callback(
     board_t board,
     void *userdata
     )
+
 {
-  int i;
+  int i, result;
   char buf[128];
+
   if (action == ACTION_NONE || action == ACTION_PLACE) {
+
     while (1) {
+
+      /* display the board */
+      /* system uses fork? making it difficult to debug */
       //system("clear");
+      printf("\n");
       cli_display(board);
+      printf("\n");
+
+      /* prompt for input */
       printf("%s>", ROLENAME(role));
       fgets(buf, sizeof(buf), stdin);
+
       /* TODO: commands and EOF  */
-      if (buf[0] >= 'A' && buf[0] < 'A' + BOARD_W && isdigit(buf[1])) {
-        i = atoi(&buf[1]);
-        if (i > 0 && i <= BOARD_H) {
-          newpos->x = buf[0] - 'A';
-          newpos->y = BOARD_H - i; 
-          //printf("%d,%d\n", newpos->x, newpos->y);
-          return ACTION_PLACE;
+
+      /* try to recognize input as coordinates */
+      if (buf[0] >= 'A' &&
+          buf[0] < 'A' + BOARD_W &&
+          isdigit(buf[1]) &&
+          (i = atoi(&buf[1])) > 0 &&
+          i <= BOARD_H) {
+
+        newpos->x = buf[0] - 'A';
+        newpos->y = BOARD_H - i; 
+        //printf("%d,%d\n", newpos->x, newpos->y);
+ 
+        /* check if occupied*/
+        if (board[newpos->x][newpos->y] == I_FREE) {
+          result = ACTION_PLACE;
+          break;
         }
+        else {
+          printf("already occupied\n");
+        }
+
       }
+      else {
+        printf("unrecognized command\n");
+      }
+
     }
+
   }
+
+  return result;
+
 }
 
 int cli_register_player(int role) {
