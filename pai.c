@@ -18,10 +18,11 @@ static board_t m_playerboard[ROLE_MAX];
 /* -1 if no winner, otherwise the role number */
 static int judge() {
   /* TODO: implement this function in a new module */
+  return -1;
 }
 
 int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata) {
-  if (role <= 0 || role >= ROLE_MAX) return 0;
+  if (role < 0 || role >= ROLE_MAX) return 0;
   m_callback[role] = callback;
   m_userdata[role] = userdata;
   return 1;
@@ -44,7 +45,7 @@ int pai_start_game() {
   /* run the game */
   while (running) {
     memcpy(&m_playerboard[role], &m_board, sizeof(board_t));
-    action = m_callback[role](role, action, &lastpos, &newpos, &m_playerboard[role], m_userdata[role]);
+    action = m_callback[role](role, action, &lastpos, &newpos, m_playerboard[role], m_userdata[role]);
     memcpy(&lastpos, &newpos, sizeof(pos));
     switch (action) {
     case ACTION_GIVEUP:
@@ -77,7 +78,7 @@ int pai_start_game() {
       /* inform opponent without changing the role */
       CHANGEROLE(role);
       memcpy(&m_playerboard[role], &m_board, sizeof(board_t));
-      m_callback[role](role, action, &lastpos, &newpos, &m_playerboard[role], m_userdata[role]);
+      m_callback[role](role, action, &lastpos, &newpos, m_playerboard[role], m_userdata[role]);
       CHANGEROLE(role);
       break;
     default:

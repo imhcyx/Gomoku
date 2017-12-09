@@ -40,7 +40,7 @@
  *    int action,
  *    pos *lastpos,
  *    pos *newpos,
- *    board_t *board,
+ *    board_t board,
  *    void *userdata
  *    );
  * 
@@ -82,7 +82,7 @@
  *
  */
 
-typedef int (*PAI_PLAYER_CALLBACK)(int, int, pos*, pos*, board_t*, void*);
+typedef int (*PAI_PLAYER_CALLBACK)(int, int, pos*, pos*, board_t, void*);
 
 /* Public functions */
 
