@@ -5,8 +5,11 @@ LINKER_FLAGS =
 
 .DEFAULT_GOAL := all
 
-$(OUTFILE): main.o pai.o cli.o
+$(OUTFILE): judge.o main.o pai.o cli.o
 	$(CC) $(CFLAGS) $(LINKER_FLAGS) -o $@ $^
+
+judge.o: judge.c judge.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 main.o: main.c gomoku.h
 	$(CC) $(CFLAGS) -c -o $@ $<

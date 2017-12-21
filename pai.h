@@ -84,6 +84,9 @@
 
 typedef int (*PAI_PLAYER_CALLBACK)(int, int, pos*, pos*, board_t, void*);
 
+/*TODO*/
+typedef void (*PAI_DISPLAY_CALLBACK)(board_t, char*);
+
 /* Public functions */
 
 /*
@@ -107,5 +110,8 @@ int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata);
  */
 
 int pai_start_game();
+
+/*TODO*/
+int pai_register_display(PAI_DISPLAY_CALLBACK callback);
 
 #endif /* PAI_H */

@@ -4,6 +4,7 @@
  */
 
 #include "pai.h"
+#include "judge.h"
 
 #define CHANGEROLE(x) x = (x == ROLE_BLACK ? ROLE_WHITE : ROLE_BLACK)
 #define ROLE2ISTATUS(x) (x == ROLE_BLACK ? I_BLACK : I_WHITE)
@@ -11,15 +12,16 @@
 static PAI_PLAYER_CALLBACK m_callback[ROLE_MAX];
 static void *m_userdata[ROLE_MAX];
 
+static PAI_DISPLAY_CALLBACK m_dcallback;
+
 static board_t m_board;
 /* to avoid access to m_board, define isolated boards for each player */
 static board_t m_playerboard[ROLE_MAX];
 
+static char *m_msg;
+
 /* -1 if no winner, otherwise the role number */
-static int judge() {
-  /* TODO: implement this function in a new module */
-  return -1;
-}
+//static int judge();
 
 int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata)
 {
@@ -52,8 +54,13 @@ int pai_start_game()
   
   /* run the game */
   
-  while (running) {
+  while (1) {
     
+    if (m_dcallback) m_dcallback(m_board, m_msg);
+    m_msg = 0;
+
+    if (!running) break;
+
     memcpy(&m_playerboard[role], &m_board, sizeof(board_t));
     action = m_callback[role](role, action, &lastpos, &newpos, m_playerboard[role], m_userdata[role]);
     memcpy(&lastpos, &newpos, sizeof(pos));
@@ -71,7 +78,14 @@ int pai_start_game()
     case ACTION_PLACE:
 
       /* check availability */
-      
+      if (newpos.x < 0 || newpos.x >= BOARD_W ||
+          newpos.y < 0 || newpos.y >= BOARD_H) {
+        
+        m_msg = "invalid coordinate, retrying";
+        break;
+
+      }
+
       if (m_board[newpos.x][newpos.y] == I_FREE) {
 
         /* do placement */
@@ -83,17 +97,17 @@ int pai_start_game()
 
       else {
 
-        /* we should not get here */
-        fprintf(stderr, "pai: invalid placement on (%d,%d) by %d\n", newpos.x, newpos.y, role);
+        m_msg = "positionn occupied, retrying";
         break;
 
       }
 
-      /* TODO: check bans */
-
       /* judge */
-      if ((winner = judge()) >= 0)
+      if ((winner = judge(m_board, &newpos)) >= 0) {
         running = 0;
+      }
+
+      /* TODO: check bans */
 
       /* change the role */
       CHANGEROLE(role);
@@ -126,4 +140,8 @@ int pai_start_game()
 
   return winner;
 
+}
+
+int pai_register_display(PAI_DISPLAY_CALLBACK callback) {
+  m_dcallback = callback;
 }

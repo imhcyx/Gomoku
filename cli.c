@@ -11,7 +11,7 @@
 static pos newest[2];
 
 /* display the board */
-static void cli_display(board_t board) {
+static void cli_display(board_t board, char *msg) {
   int i, j;
   printf("   ┌");
   for (i=0; i<BOARD_W; i++)
@@ -47,7 +47,8 @@ static void cli_display(board_t board) {
   printf("    ");
   for (i=0; i<BOARD_W; i++)
     printf(" %c", 'A' + i);
-  printf("\n");
+  printf("\n\n");
+  printf("%s\n", msg ? msg : "");
 }
 
 /* 0 on failure, non-0 on success  */
@@ -106,15 +107,8 @@ static int cli_callback(
 
     while (1) {
 
-      /* display the board */
-      /* system uses fork? making it difficult to debug */
-      //system("clear");
-      printf("\n");
-      cli_display(board);
       if (pmsg)
         printf("%s\n", pmsg);
-      else
-        printf("\n");
 
       /* prompt for input */
       printf("%s>", ROLENAME(role));
@@ -124,7 +118,7 @@ static int cli_callback(
       /* TODO: commands and EOF  */
 
       /* handle quit  */
-      if (!strcmp(buf, "quit")) {
+      if (!strcmp(buf, "quit") || !strcmp(buf, "q")) {
         result = ACTION_GIVEUP;
         break;
       }
@@ -132,23 +126,12 @@ static int cli_callback(
       /* try to recognize input as coordinates */
       if (cli_parse_coordinate(buf, newpos)) {
 
-        printf("%d,%d\n", newpos->x, newpos->y);
+        //printf("%d,%d\n", newpos->x, newpos->y);
 
-        /* check validity */
-        if (newpos->x < 0 || newpos->x >= BOARD_W ||
-            newpos->y < 0 || newpos->y >= BOARD_H) {
-          pmsg = "invalid coordinate";
-        }
-        /* check if occupied*/
-        else if (board[newpos->x][newpos->y] == I_FREE) {
-          result = ACTION_PLACE;
-          newest[role].x = newpos->x;
-          newest[role].y = newpos->y;
-          break;
-        }
-        else {
-          pmsg = "already occupied";
-        }
+        newest[role].x = newpos->x;
+        newest[role].y = newpos->y;
+        result = ACTION_PLACE;
+        break;
 
       }
       else {
@@ -164,5 +147,6 @@ static int cli_callback(
 }
 
 int cli_register_player(int role) {
+  pai_register_display(cli_display);
   return pai_register_player(role, cli_callback, 0);
 }
