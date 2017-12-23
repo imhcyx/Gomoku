@@ -156,6 +156,7 @@ void cli_testmode() {
   pos p;
   char buf[16];
   extern int judge(board_t,pos*);
+  extern int checkban(board_t,pos*);
   extern int is_open_4(board_t, pos*, int);
   extern int is_dash_4(board_t, pos*, int);
   extern int is_open_3(board_t, pos*, int);
@@ -208,7 +209,18 @@ void cli_testmode() {
           printf("judge: %d\n", judge(board, &p));
         else
           printf("invalid\n");
-        break; 
+        break;
+      case 'f': 
+        printf("pos:");
+        fgets(buf, sizeof(buf), stdin);
+        buf[strlen(buf)-1] = '\0';
+        if (cli_parse_coordinate(buf, &p) &&
+            p.x >= 0 && p.x < BOARD_W &&
+            p.y >= 0 && p.y < BOARD_H)
+          printf("checkban: %d\n", checkban(board, &p));
+        else
+          printf("invalid\n");
+        break;
       case 't':
         printf("pos:");
         fgets(buf, sizeof(buf), stdin);

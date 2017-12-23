@@ -109,7 +109,7 @@ static inline int char_match(board_t board, int x, int y, char pattern) {
   return 0;
 }
 
-static int pat_match(board_t board, pos *newpos, int line, const char *pat) {
+static int pat_match(board_t board, pos *newpos, int line, const char *pat, int *result) {
   int i, j;
   int l = strlen(pat);
   pos p;
@@ -139,6 +139,7 @@ static int pat_match(board_t board, pos *newpos, int line, const char *pat) {
               break;
           }
         }
+        if (result) *result = i;
         return 1;
       }
   return 0;
@@ -165,7 +166,7 @@ static inline int count_line(board_t board, pos *newpos, int line, int allowedsp
 /*static*/ int is_open_4(board_t board, pos *newpos, int line) {
   int i;
   for (i=0; i<sizeof(patopen4)/sizeof(char*); i++)
-    if (pat_match(board, newpos, line, patopen4[i]))
+    if (pat_match(board, newpos, line, patopen4[i], 0))
       return 1;
   return 0;
 }
@@ -173,13 +174,26 @@ static inline int count_line(board_t board, pos *newpos, int line, int allowedsp
 /*static*/ int is_dash_4(board_t board, pos *newpos, int line) {
   int i;
   for (i=0; i<sizeof(patdash4)/sizeof(char*); i++)
-    if (pat_match(board, newpos, line, patdash4[i]))
+    if (pat_match(board, newpos, line, patdash4[i], 0))
       return 1;
   return 0;
 }
 
 /*static*/ int is_open_3(board_t board, pos *newpos, int line) {
-  /*TODO*/
+  int i, j, result;
+  pos p;
+  for (i=0; i<sizeof(patopen3)/sizeof(char*); i++)
+    if (pat_match(board, newpos, line, patopen3[i], &result))
+      for (j=0; j<strlen(patopen3[i]); j++)
+        if (patopen3[i][j] == '#') {
+          p.x = newpos->x+dirarr[line][0][0]*(result+j);
+          p.y = newpos->y+dirarr[line][0][1]*(result+j);
+          board[p.x][p.y] = I_BLACK;
+          result = is_open_4(board, &p, line);
+          board[p.x][p.y] = I_FREE;
+          if (result)
+            return 1;
+        }
   return 0;
 }
 
@@ -206,7 +220,7 @@ int checkban(board_t board, pos *newpos) {
   open3count = 0;
   alive4count = 0;
   for (i=0; i<4; i++) {
-    lcount = count_line(board, newpos, i, 1);
+    lcount = count_line(board, newpos, i, 0);
     /* 5 reached, ban is no longer valid */
     if (lcount == 5) {
       result = 0;
@@ -217,6 +231,7 @@ int checkban(board_t board, pos *newpos) {
       result = 1;
       goto _exit;
     }
+    lcount = count_line(board, newpos, i, 1);
     /* count open 3 */
     if (lcount == 3 && is_open_3(board, newpos, i))
       open3count++;
