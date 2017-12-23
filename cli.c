@@ -150,3 +150,96 @@ int cli_register_player(int role) {
   pai_register_display(cli_display);
   return pai_register_player(role, cli_callback, 0);
 }
+
+void cli_testmode() {
+  board_t board = {0};
+  pos p;
+  char buf[16];
+  extern int judge(board_t,pos*);
+  extern int is_open_4(board_t, pos*, int);
+  extern int is_dash_4(board_t, pos*, int);
+  extern int is_open_3(board_t, pos*, int);
+ while (1) {
+    cli_display(board, 0);
+    printf("command>");
+    fgets(buf, sizeof(buf), stdin);
+    buf[strlen(buf)-1] = '\0';
+    switch (buf[0]) {
+      case 'b':
+        printf("pos:");
+        fgets(buf, sizeof(buf), stdin);
+        buf[strlen(buf)-1] = '\0';
+        if (cli_parse_coordinate(buf, &p) &&
+            p.x >= 0 && p.x < BOARD_W &&
+            p.y >= 0 && p.y < BOARD_H)
+          board[p.x][p.y] = I_BLACK;
+        else
+          printf("invalid\n");
+        break;
+      case 'w':
+        printf("pos:");
+        fgets(buf, sizeof(buf), stdin);
+        buf[strlen(buf)-1] = '\0';
+        if (cli_parse_coordinate(buf, &p) &&
+            p.x >= 0 && p.x < BOARD_W &&
+            p.y >= 0 && p.y < BOARD_H)
+          board[p.x][p.y] = I_WHITE;
+        else
+          printf("invalid\n");
+        break;
+      case 'c':
+        printf("pos:");
+        fgets(buf, sizeof(buf), stdin);
+        buf[strlen(buf)-1] = '\0';
+        if (cli_parse_coordinate(buf, &p) &&
+            p.x >= 0 && p.x < BOARD_W &&
+            p.y >= 0 && p.y < BOARD_H)
+          board[p.x][p.y] = I_FREE;
+        else
+          printf("invalid\n");
+        break;
+      case 'j':
+        printf("pos:");
+        fgets(buf, sizeof(buf), stdin);
+        buf[strlen(buf)-1] = '\0';
+        if (cli_parse_coordinate(buf, &p) &&
+            p.x >= 0 && p.x < BOARD_W &&
+            p.y >= 0 && p.y < BOARD_H)
+          printf("judge: %d\n", judge(board, &p));
+        else
+          printf("invalid\n");
+        break; 
+      case 't':
+        printf("pos:");
+        fgets(buf, sizeof(buf), stdin);
+        buf[strlen(buf)-1] = '\0';
+        if (cli_parse_coordinate(buf, &p) &&
+            p.x >= 0 && p.x < BOARD_W &&
+            p.y >= 0 && p.y < BOARD_H) {
+          printf("is_open_4: %d,%d,%d,%d\n",
+            is_open_4(board, &p, 0),
+            is_open_4(board, &p, 1),
+            is_open_4(board, &p, 2),
+            is_open_4(board, &p, 3)
+            );
+          printf("is_dash_4: %d,%d,%d,%d\n",
+            is_dash_4(board, &p, 0),
+            is_dash_4(board, &p, 1),
+            is_dash_4(board, &p, 2),
+            is_dash_4(board, &p, 3)
+            );
+          printf("is_open_3: %d,%d,%d,%d\n",
+            is_open_3(board, &p, 0),
+            is_open_3(board, &p, 1),
+            is_open_3(board, &p, 2),
+            is_open_3(board, &p, 3)
+            );
+        }
+        else
+          printf("invalid\n");
+        break;
+      case 'q':
+        return;
+    }
+  }
+}

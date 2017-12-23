@@ -107,7 +107,36 @@ int pai_start_game()
         running = 0;
       }
 
-      /* TODO: check bans */
+      /* check bans */
+      if (role == ROLE_BLACK && checkban(m_board, &newpos)) {
+        m_msg = "position banned, retrying";
+      }
+#if 1
+      /* for debug */
+      extern int is_open_4(board_t, pos*, int);
+      extern int is_dash_4(board_t, pos*, int);
+      extern int is_open_3(board_t, pos*, int);
+      if (role == ROLE_BLACK) {
+        printf("is_open_4: %d,%d,%d,%d\n",
+           is_open_4(m_board, &newpos, 0),
+           is_open_4(m_board, &newpos, 1),
+           is_open_4(m_board, &newpos, 2),
+           is_open_4(m_board, &newpos, 3)
+           );
+        printf("is_dash_4: %d,%d,%d,%d\n",
+           is_dash_4(m_board, &newpos, 0),
+           is_dash_4(m_board, &newpos, 1),
+           is_dash_4(m_board, &newpos, 2),
+           is_dash_4(m_board, &newpos, 3)
+           );
+        printf("is_open_3: %d,%d,%d,%d\n",
+           is_open_3(m_board, &newpos, 0),
+           is_open_3(m_board, &newpos, 1),
+           is_open_3(m_board, &newpos, 2),
+           is_open_3(m_board, &newpos, 3)
+           );
+      }
+#endif
 
       /* change the role */
       CHANGEROLE(role);

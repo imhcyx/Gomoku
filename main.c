@@ -8,6 +8,11 @@
 
 int main(int argc, const char *argv[]) {
   int winner;
+#if 1
+  extern void cli_testmode();
+  cli_testmode();
+  return 0;
+#endif
   cli_register_player(ROLE_BLACK);
   cli_register_player(ROLE_WHITE);
   winner = pai_start_game();
