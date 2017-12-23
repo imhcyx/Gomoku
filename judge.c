@@ -131,7 +131,10 @@ static int pat_match(board_t board, pos *newpos, int line, const char *pat) {
                 return 0;
               break;
             case 'x':
-              if (!checkban(board, &p))
+              if (p.x>=0 && p.x<BOARD_W &&
+                  p.y>=0 && p.y<BOARD_H &&
+                  board[p.x][p.y] != I_WHITE &&
+                  !checkban(board, &p))
                 return 0;
               break;
           }
