@@ -8,10 +8,8 @@
 
 #define ROLENAME(x) (x == ROLE_BLACK ? "black" : "white")
 
-static pos newest[2];
-
 /* display the board */
-static void cli_display(board_t board, char *msg) {
+static void cli_display(board_t board, pos *newest, char *msg) {
   int i, j;
   printf("   ┌");
   for (i=0; i<BOARD_W; i++)
@@ -22,13 +20,13 @@ static void cli_display(board_t board, char *msg) {
     for (j=0; j<BOARD_W; j++) {
       switch (board[j][i]) {
       case 1:
-        if (newest[0].x == j && newest[0].y == i)
+        if (newest && newest->x == j && newest->y == i)
           printf("-▲");
         else
           printf("─●");
         break;
       case 2:
-        if (newest[1].x == j && newest[1].y == i)
+        if (newest && newest->x == j && newest->y == i)
           printf("-△");
         else
           printf("─○");
@@ -128,8 +126,6 @@ static int cli_callback(
 
         //printf("%d,%d\n", newpos->x, newpos->y);
 
-        newest[role].x = newpos->x;
-        newest[role].y = newpos->y;
         result = ACTION_PLACE;
         break;
 
@@ -155,13 +151,14 @@ void cli_testmode() {
   board_t board = {0};
   pos p;
   char buf[16];
+  FILE *file;
   extern int judge(board_t,pos*);
   extern int checkban(board_t,pos*);
-  extern int is_open_4(board_t, pos*, int);
-  extern int is_dash_4(board_t, pos*, int);
-  extern int is_open_3(board_t, pos*, int);
+  extern int count_open_4(board_t, pos*, int);
+  extern int count_dash_4(board_t, pos*, int);
+  extern int count_open_3(board_t, pos*, int);
  while (1) {
-    cli_display(board, 0);
+    cli_display(board, 0, 0);
     printf("command>");
     fgets(buf, sizeof(buf), stdin);
     buf[strlen(buf)-1] = '\0';
@@ -228,28 +225,53 @@ void cli_testmode() {
         if (cli_parse_coordinate(buf, &p) &&
             p.x >= 0 && p.x < BOARD_W &&
             p.y >= 0 && p.y < BOARD_H) {
-          printf("is_open_4: %d,%d,%d,%d\n",
-            is_open_4(board, &p, 0),
-            is_open_4(board, &p, 1),
-            is_open_4(board, &p, 2),
-            is_open_4(board, &p, 3)
+          printf("count_open_4: %d,%d,%d,%d\n",
+            count_open_4(board, &p, 0),
+            count_open_4(board, &p, 1),
+            count_open_4(board, &p, 2),
+            count_open_4(board, &p, 3)
             );
-          printf("is_dash_4: %d,%d,%d,%d\n",
-            is_dash_4(board, &p, 0),
-            is_dash_4(board, &p, 1),
-            is_dash_4(board, &p, 2),
-            is_dash_4(board, &p, 3)
+          printf("count_dash_4: %d,%d,%d,%d\n",
+            count_dash_4(board, &p, 0),
+            count_dash_4(board, &p, 1),
+            count_dash_4(board, &p, 2),
+            count_dash_4(board, &p, 3)
             );
-          printf("is_open_3: %d,%d,%d,%d\n",
-            is_open_3(board, &p, 0),
-            is_open_3(board, &p, 1),
-            is_open_3(board, &p, 2),
-            is_open_3(board, &p, 3)
+          printf("count_open_3: %d,%d,%d,%d\n",
+            count_open_3(board, &p, 0),
+            count_open_3(board, &p, 1),
+            count_open_3(board, &p, 2),
+            count_open_3(board, &p, 3)
             );
         }
         else
           printf("invalid\n");
         break;
+      case 's':
+        printf("filename:");
+        fgets(buf, sizeof(buf), stdin);
+        buf[strlen(buf)-1] = '\0';
+        file = fopen(buf, "wb");
+        if (!file) {
+          printf("failed\n");
+          break;
+        }
+        fwrite(board, 1, sizeof(board), file);
+        fclose(file);
+        break;
+      case 'l':
+        printf("filename:");
+        fgets(buf, sizeof(buf), stdin);
+        buf[strlen(buf)-1] = '\0';
+        file = fopen(buf, "rb");
+        if (!file) {
+          printf("failed\n");
+          break;
+        }
+        fread(board, 1, sizeof(board), file);
+        fclose(file);
+        break;
+
       case 'q':
         return;
     }

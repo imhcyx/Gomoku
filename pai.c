@@ -37,7 +37,7 @@ int pai_start_game()
   int running;
   int role, winner;
   int action;
-  pos lastpos, newpos;
+  pos lastpos, newpos, newest;
   
   /* check callback pointers */
   
@@ -56,7 +56,7 @@ int pai_start_game()
   
   while (1) {
     
-    if (m_dcallback) m_dcallback(m_board, m_msg);
+    if (m_dcallback) m_dcallback(m_board, &newest, m_msg);
     m_msg = 0;
 
     if (!running) break;
@@ -88,8 +88,15 @@ int pai_start_game()
 
       if (m_board[newpos.x][newpos.y] == I_FREE) {
 
+        /* check bans */
+        if (role == ROLE_BLACK && checkban(m_board, &newpos)) {
+          m_msg = "position banned, retrying";
+          break;
+        }
+
         /* do placement */
         m_board[newpos.x][newpos.y] = ROLE2ISTATUS(role);
+        newest = newpos;
 
         /* TODO: record step */
 
@@ -107,33 +114,29 @@ int pai_start_game()
         running = 0;
       }
 
-      /* check bans */
-      if (role == ROLE_BLACK && checkban(m_board, &newpos)) {
-        m_msg = "position banned, retrying";
-      }
 #if 1
       /* for debug */
-      extern int is_open_4(board_t, pos*, int);
-      extern int is_dash_4(board_t, pos*, int);
-      extern int is_open_3(board_t, pos*, int);
+      extern int count_open_4(board_t, pos*, int);
+      extern int count_dash_4(board_t, pos*, int);
+      extern int count_open_3(board_t, pos*, int);
       if (role == ROLE_BLACK) {
-        printf("is_open_4: %d,%d,%d,%d\n",
-           is_open_4(m_board, &newpos, 0),
-           is_open_4(m_board, &newpos, 1),
-           is_open_4(m_board, &newpos, 2),
-           is_open_4(m_board, &newpos, 3)
+        printf("count_open_4: %d,%d,%d,%d\n",
+           count_open_4(m_board, &newpos, 0),
+           count_open_4(m_board, &newpos, 1),
+           count_open_4(m_board, &newpos, 2),
+           count_open_4(m_board, &newpos, 3)
            );
-        printf("is_dash_4: %d,%d,%d,%d\n",
-           is_dash_4(m_board, &newpos, 0),
-           is_dash_4(m_board, &newpos, 1),
-           is_dash_4(m_board, &newpos, 2),
-           is_dash_4(m_board, &newpos, 3)
+        printf("count_dash_4: %d,%d,%d,%d\n",
+           count_dash_4(m_board, &newpos, 0),
+           count_dash_4(m_board, &newpos, 1),
+           count_dash_4(m_board, &newpos, 2),
+           count_dash_4(m_board, &newpos, 3)
            );
-        printf("is_open_3: %d,%d,%d,%d\n",
-           is_open_3(m_board, &newpos, 0),
-           is_open_3(m_board, &newpos, 1),
-           is_open_3(m_board, &newpos, 2),
-           is_open_3(m_board, &newpos, 3)
+        printf("count_open_3: %d,%d,%d,%d\n",
+           count_open_3(m_board, &newpos, 0),
+           count_open_3(m_board, &newpos, 1),
+           count_open_3(m_board, &newpos, 2),
+           count_open_3(m_board, &newpos, 3)
            );
       }
 #endif

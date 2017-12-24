@@ -66,6 +66,7 @@ static const char *patdash4[] = {
   "-**#**-", "-***#*-", "-*#***-", "x****#-", "-#****x"
 };
 
+/* Note: patopen3[0] and patopen3[1] are exclusive */
 static const char *patopen3[] = {
   "+***#+", "+#***+", "+**#*+", "+*#**+"
 };
@@ -78,16 +79,6 @@ static const char *patopen3[] = {
     (vx) += dirarr[line][dir][0], \
     (vy) += dirarr[line][dir][1] \
     )
-
-#define END2POS(newpos, line, dir, end, pos) ( \
-  pos.x = newpos->x+dirarr[line][dir][0]*(end), \
-  pos.y = newpos->y+dirarr[line][dir][1]*(end))
-
-#define END2I(board, newpos, line, dir, end) \
-  (board \
-    [newpos->x+dirarr[line][dir][0]*(end)] \
-    [newpos->y+dirarr[line][dir][1]*(end)] \
-  )
 
 static inline int char_match(board_t board, int x, int y, char pattern) {
   switch (pattern) {
@@ -109,11 +100,12 @@ static inline int char_match(board_t board, int x, int y, char pattern) {
   return 0;
 }
 
-static int pat_match(board_t board, pos *newpos, int line, const char *pat, int *result) {
+/* initial start=-5 */
+static int pat_match(board_t board, pos *newpos, int line, const char *pat, int start, int *result) {
   int i, j;
   int l = strlen(pat);
   pos p;
-  for (i=-5; i+l-1<=5; i++, j++)
+  for (i=start; i+l-1<=5; i++, j++)
     for (j=0;
         char_match(board,
           newpos->x+dirarr[line][0][0]*(i+j),
@@ -146,7 +138,7 @@ static int pat_match(board_t board, pos *newpos, int line, const char *pat, int 
 }
 
 /* count pieces in a line */
-static inline int count_line(board_t board, pos *newpos, int line, int allowedspaces) {
+static inline int count_line(board_t board, pos *newpos, int line) {
   int i, n;
   int x, y;
   n = 1;
@@ -156,45 +148,55 @@ static inline int count_line(board_t board, pos *newpos, int line, int allowedsp
     ITERATE_BY_DIR(x, y, newpos, line, i)
       if (board[x][y] == board[newpos->x][newpos->y])
         n++;
-      else if (board[x][y] == I_FREE && allowedspaces)
-        allowedspaces--;
       else
         break;
   return n;
 }
 
-/*static*/ int is_open_4(board_t board, pos *newpos, int line) {
-  int i;
-  for (i=0; i<sizeof(patopen4)/sizeof(char*); i++)
-    if (pat_match(board, newpos, line, patopen4[i], 0))
-      return 1;
-  return 0;
+/*static*/ int count_open_4(board_t board, pos *newpos, int line) {
+  int i, start, count;
+  count = 0;
+  for (i=0; i<sizeof(patopen4)/sizeof(char*); i++) {
+    start = -6;
+    while (pat_match(board, newpos, line, patopen4[i], start+1, &start))
+      count++;
+  }
+  return count;
 }
 
-/*static*/ int is_dash_4(board_t board, pos *newpos, int line) {
-  int i;
-  for (i=0; i<sizeof(patdash4)/sizeof(char*); i++)
-    if (pat_match(board, newpos, line, patdash4[i], 0))
-      return 1;
-  return 0;
+/*static*/ int count_dash_4(board_t board, pos *newpos, int line) {
+  int i, start, count;
+  count = 0;
+  for (i=0; i<sizeof(patdash4)/sizeof(char*); i++) {
+    start = -6;
+    while (pat_match(board, newpos, line, patdash4[i], start+1, &start))
+      count++;
+  }
+  return count;
 }
 
-/*static*/ int is_open_3(board_t board, pos *newpos, int line) {
-  int i, j, result;
+/*static*/ int count_open_3(board_t board, pos *newpos, int line) {
+  int i, j, result, start, count;
   pos p;
-  for (i=0; i<sizeof(patopen3)/sizeof(char*); i++)
-    if (pat_match(board, newpos, line, patopen3[i], &result))
+  count = 0;
+  for (i=0; i<sizeof(patopen3)/sizeof(char*); i++) {
+    start = -6;
+    while (pat_match(board, newpos, line, patopen3[i], start+1, &start))
       for (j=0; j<strlen(patopen3[i]); j++)
         if (patopen3[i][j] == '#') {
-          p.x = newpos->x+dirarr[line][0][0]*(result+j);
-          p.y = newpos->y+dirarr[line][0][1]*(result+j);
+          p.x = newpos->x+dirarr[line][0][0]*(start+j);
+          p.y = newpos->y+dirarr[line][0][1]*(start+j);
           board[p.x][p.y] = I_BLACK;
-          result = is_open_4(board, &p, line);
+          result = count_open_4(board, &p, line);
           board[p.x][p.y] = I_FREE;
           if (result)
-            return 1;
+            count++;
         }
-  return 0;
+    /* if patopen[0] is matched, do not match patopen[1] */
+    if (i==0 && count)
+      i++;
+  }
+  return count;
 }
 
 int judge(board_t board, pos *newpos) {
@@ -202,7 +204,7 @@ int judge(board_t board, pos *newpos) {
   int x, y;
   /* iterate 4 lines  */
   for (i=0; i<4; i++)
-    if (count_line(board, newpos, i, 0) == 5)
+    if (count_line(board, newpos, i) == 5)
       return board[newpos->x][newpos->y] - 1;
   return -1;
 }
@@ -220,7 +222,7 @@ int checkban(board_t board, pos *newpos) {
   open3count = 0;
   alive4count = 0;
   for (i=0; i<4; i++) {
-    lcount = count_line(board, newpos, i, 0);
+    lcount = count_line(board, newpos, i);
     /* 5 reached, ban is no longer valid */
     if (lcount == 5) {
       result = 0;
@@ -231,13 +233,10 @@ int checkban(board_t board, pos *newpos) {
       result = 1;
       goto _exit;
     }
-    lcount = count_line(board, newpos, i, 1);
     /* count open 3 */
-    if (lcount == 3 && is_open_3(board, newpos, i))
-      open3count++;
+    open3count += count_open_3(board, newpos, i);
     /* count alive 4 */
-    if (lcount == 4 && (is_open_4(board, newpos, i) || is_dash_4(board, newpos, i)))
-      alive4count++;
+    alive4count += count_open_4(board, newpos, i) + count_dash_4(board, newpos, i);
   }
   /* check 3-3 & 4-4 */
   if (open3count >= 2 || alive4count >= 2) {

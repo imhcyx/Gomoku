@@ -8,7 +8,7 @@
 
 int main(int argc, const char *argv[]) {
   int winner;
-#if 1
+#if 0
   extern void cli_testmode();
   cli_testmode();
   return 0;

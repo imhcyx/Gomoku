@@ -25,4 +25,4 @@ all: $(OUTFILE)
 
 .PHONY: clean
 clean:
-	rm main.o pai.o cli.o $(OUTFILE)
+	rm main.o pai.o cli.o judge.o $(OUTFILE)
