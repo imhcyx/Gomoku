@@ -11,6 +11,66 @@
 /* display the board */
 static void cli_display(board_t board, pos *newest, char *msg) {
   int i, j;
+  printf("\n");
+  for (i=0; i<BOARD_H; i++) {
+    printf(" %2d ", BOARD_H - i);
+    for (j=0; j<BOARD_W; j++) {
+      switch (board[j][i]) {
+      case 1:
+        if (newest && newest->x == j && newest->y == i)
+          printf("▲");
+        else
+          printf("●");
+        if (j!=BOARD_W-1)
+          printf("─");
+        break;
+      case 2:
+        if (newest && newest->x == j && newest->y == i)
+          printf("△");
+        else
+          printf("○");
+        if (j!=BOARD_W-1)
+          printf("─");
+        break;
+      default:
+        if (j==0) {
+          if (i==0)
+            printf("┌─");
+          else if (i==BOARD_H-1)
+            printf("└─");
+          else
+            printf("├─");
+        }
+        else if (j==BOARD_W-1) {
+          if (i==0)
+            printf("┐");
+          else if (i==BOARD_H-1)
+            printf("┘");
+          else
+            printf("┤");
+        }
+        else {
+          if (i==0)
+            printf("┬─");
+          else if (i==BOARD_H-1)
+            printf("┴─");
+          else
+            printf("┼─");
+        }
+        break;
+      }
+    }
+    printf("\n");
+  }
+  printf("   ");
+  for (i=0; i<BOARD_W; i++)
+    printf(" %c", 'A' + i);
+  printf("\n\n");
+  printf("%s\n", msg ? msg : "");
+}
+
+static void cli_displayold(board_t board, pos *newest, char *msg) {
+  int i, j;
   printf("   ┌");
   for (i=0; i<BOARD_W; i++)
     printf("─┬");
