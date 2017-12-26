@@ -150,7 +150,7 @@ static int cli_parse_coordinate(char *str, pos *p) {
 static int cli_callback(
     int role,
     int action,
-    pos *lastpos,
+    int move,
     pos *newpos,
     board_t board,
     void *userdata
@@ -178,6 +178,12 @@ static int cli_callback(
       /* handle quit  */
       if (!strcmp(buf, "quit") || !strcmp(buf, "q")) {
         result = ACTION_GIVEUP;
+        break;
+      }
+
+      /* handle undo */
+      if (!strcmp(buf, "undo") || !strcmp(buf, "u")) {
+        result = ACTION_UNPLACE;
         break;
       }
 

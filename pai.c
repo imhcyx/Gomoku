@@ -6,7 +6,6 @@
 #include "pai.h"
 #include "judge.h"
 
-#define CHANGEROLE(x) x = (x == ROLE_BLACK ? ROLE_WHITE : ROLE_BLACK)
 #define ROLE2ISTATUS(x) (x == ROLE_BLACK ? I_BLACK : I_WHITE)
 
 static PAI_PLAYER_CALLBACK m_callback[ROLE_MAX];
@@ -15,8 +14,10 @@ static void *m_userdata[ROLE_MAX];
 static PAI_DISPLAY_CALLBACK m_dcallback;
 
 static board_t m_board;
-/* to avoid access to m_board, define isolated boards for each player */
-static board_t m_playerboard[ROLE_MAX];
+
+/* position record */
+#define RECORD_MAX 256
+pos record_pos[RECORD_MAX];
 
 static char *m_msg;
 
@@ -35,9 +36,10 @@ int pai_start_game()
 {
   
   int running;
+  int move;
   int role, winner;
   int action;
-  pos lastpos, newpos, newest;
+  pos newpos, newest;
   
   /* check callback pointers */
   
@@ -49,9 +51,10 @@ int pai_start_game()
   
   memset(m_board, 0, sizeof(m_board));
   running = 1;
+  move = 0;
   role = ROLE_BLACK;
   action = 0;
-  
+
   /* run the game */
   
   while (1) {
@@ -61,17 +64,15 @@ int pai_start_game()
 
     if (!running) break;
 
-    memcpy(&m_playerboard[role], &m_board, sizeof(board_t));
-    action = m_callback[role](role, action, &lastpos, &newpos, m_playerboard[role], m_userdata[role]);
-    memcpy(&lastpos, &newpos, sizeof(pos));
-    
+    role = move % 2;
+    action = m_callback[role](role, action, move, &newpos, m_board, m_userdata[role]);
+
     switch (action) {
 
     case ACTION_GIVEUP:
       
       /* player giving up, exit the game */
-      CHANGEROLE(role);
-      winner = role;
+      winner = (move+1)%2;
       running = 0;
       break;
 
@@ -98,13 +99,14 @@ int pai_start_game()
         m_board[newpos.x][newpos.y] = ROLE2ISTATUS(role);
         newest = newpos;
 
-        /* TODO: record step */
+        /* record step */
+        record_pos[move] = newpos;
 
       }
 
       else {
 
-        m_msg = "positionn occupied, retrying";
+        m_msg = "position occupied, retrying";
         break;
 
       }
@@ -114,7 +116,8 @@ int pai_start_game()
         running = 0;
       }
 
-#if 1
+#if 0
+    s
       /* for debug */
       extern int count_open_4(board_t, pos*, int);
       extern int count_dash_4(board_t, pos*, int);
@@ -142,18 +145,27 @@ int pai_start_game()
 #endif
 
       /* change the role */
-      CHANGEROLE(role);
+      move++;
       break;
 
     case ACTION_UNPLACE:
 
-      /* TODO: do unplacement from step record */
+      /* do unplacement from step record */
+      if (move>=2) {
+        move--;
+        m_board[record_pos[move].x][record_pos[move].y] = I_FREE;
+        move--;
+        m_board[record_pos[move].x][record_pos[move].y] = I_FREE;
+        if (move>0) newest = record_pos[move-1];
+        m_msg = "mos recent turn has been undone";
+      }
+      else {
+        m_msg = "unable to undo";
+      }
 
-      /* inform opponent without changing the role */
-      CHANGEROLE(role);
-      memcpy(&m_playerboard[role], &m_board, sizeof(board_t));
-      m_callback[role](role, action, 0, 0, m_playerboard[role], m_userdata[role]);
-      CHANGEROLE(role);
+      /* continue placing */
+      action = ACTION_PLACE;
+
       break;
 
     default:

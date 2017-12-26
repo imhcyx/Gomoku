@@ -38,7 +38,7 @@
  * int callback(
  *    int role,
  *    int action,
- *    pos *lastpos,
+ *    int move,
  *    pos *newpos,
  *    board_t board,
  *    void *userdata
@@ -46,7 +46,7 @@
  * 
  * role: role of self
  * action: the most recent action
- * lastpos: the position recently affected
+ * move: the count of moves already made
  * newpos: the position to be affected
  * board: the board for the player
  *        can be modified arbitrarily
@@ -58,31 +58,28 @@
  * 
  * ACTION_CLEANUP:
  *  Received on exiting. Cannot be used as return value of callback.
- *  All cleanup work must be done. lastpos, newpos, board are unused.
+ *  All cleanup work must be done. newpos, board are unused.
  *
  * ACTION_NONE:
  *  Received when no previous action is avaliable. Cannot be used as
- *  return value of callback. lastpos is unused.
+ *  return value of callback.
  *
  * ACTION_GIVEUP:
  *  Callback function should return this when the player gives up.
- *  The opponent will receive this with lastpos unused.
+ *  The opponent will receive this.
  *
  * ACTION_PLACE:
- *  This action can be received or returned. When received, lastpos
- *  indicates previous position placed on; when returned, newpos must
+ *  This action can be received or returned. When returned, newpos must
  *  be set to the position to place on.
  *
  * ACTION_UNPLACE:
- *  This action can be received or returned. When received, an
- *  unplacement by the opponent is indicated, with lastpos and newpos
- *  unused and return value ignored; when returned, the recent turn is
+ *  This action can only be returned. The most recent turn is
  *  undone with newpos unused, or it is ignored if no undo can be
  *  performed.
  *
  */
 
-typedef int (*PAI_PLAYER_CALLBACK)(int, int, pos*, pos*, board_t, void*);
+typedef int (*PAI_PLAYER_CALLBACK)(int, int, int, pos*, board_t, void*);
 
 /*TODO*/
 typedef void (*PAI_DISPLAY_CALLBACK)(board_t, pos*, char*);
