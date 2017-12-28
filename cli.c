@@ -189,7 +189,7 @@ int cli_init() {
 }
 
 int cli_register_player(int role) {
-  return pai_register_player(role, cli_callback, 0);
+  return pai_register_player(role, cli_callback, 0, 0);
 }
 
 #if 1

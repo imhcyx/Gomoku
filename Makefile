@@ -31,4 +31,4 @@ all: $(OUTFILE)
 
 .PHONY: clean
 clean:
-	rm main.o pai.o cli.o judge.o hash.o $(OUTFILE)
+	rm main.o pai.o cli.o judge.o hash.o ai.o $(OUTFILE)

@@ -15,16 +15,15 @@ int main(int argc, const char *argv[]) {
   cli_testmode();
   return 0;
 #endif
-  //cli_register_player(ROLE_BLACK);
-  ai_register_player(ROLE_BLACK);
-  cli_register_player(ROLE_WHITE);
+  cli_register_player(ROLE_BLACK);
+  ai_register_player(ROLE_WHITE);
   winner = pai_start_game();
   switch (winner) {
   case ROLE_BLACK:
-    printf("black win\n");
+    printf("winner: black\n");
     break;
   case ROLE_WHITE:
-    printf("white win\n");
+    printf("winner: white\n");
     break;
   }
   return 0;

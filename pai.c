@@ -10,7 +10,7 @@
 
 static PAI_PLAYER_CALLBACK m_callback[ROLE_MAX];
 static void *m_userdata[ROLE_MAX];
-
+static int m_autoexit[ROLE_MAX];
 static PAI_DISPLAY_CALLBACK m_dcallback;
 
 static board_t m_board;
@@ -19,16 +19,12 @@ static board_t m_board;
 #define RECORD_MAX 256
 pos record_pos[RECORD_MAX];
 
-static char *m_msg;
-
-/* -1 if no winner, otherwise the role number */
-//static int judge();
-
-int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata)
+int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata, int autoexit)
 {
   if (role < 0 || role >= ROLE_MAX) return 0;
   m_callback[role] = callback;
   m_userdata[role] = userdata;
+  m_autoexit[role] = autoexit;
   return 1;
 }
 
@@ -40,6 +36,7 @@ int pai_start_game()
   int role, winner;
   int action;
   pos newpos, newest;
+  char *msg = 0;
 
   /* check callback pointers */
   
@@ -53,18 +50,18 @@ int pai_start_game()
   running = 1;
   move = 0;
   role = ROLE_BLACK;
+  winner = -1;
   action = 0;
 
   /* run the game */
   
-  while (1) {
+  while (running) {
     
-    if (m_dcallback) m_dcallback(m_board, &newest, m_msg);
-    m_msg = 0;
-
-    if (!running) break;
+    if (m_dcallback) m_dcallback(m_board, &newest, msg);
+    msg = 0;
 
     role = move % 2;
+    if (winner >= 0 && m_autoexit[role]) break;
     action = m_callback[role](role, action, move, &newpos, m_board, m_userdata[role]);
 
     switch (action) {
@@ -72,17 +69,23 @@ int pai_start_game()
     case ACTION_GIVEUP:
       
       /* player giving up, exit the game */
-      winner = (move+1)%2;
+      if (winner < 0) winner = (move+1)%2;
       running = 0;
       break;
 
     case ACTION_PLACE:
 
+      /* check if there is already winner */
+      if (winner >= 0) {
+        msg = "only \"undo\" and \"quit\" are available now";
+        break;
+      }
+      
       /* check availability */
       if (newpos.x < 0 || newpos.x >= BOARD_W ||
           newpos.y < 0 || newpos.y >= BOARD_H) {
         
-        m_msg = "invalid coordinate, retrying";
+        msg = "invalid coordinate, retrying";
         break;
 
       }
@@ -91,7 +94,7 @@ int pai_start_game()
 
         /* check bans */
         if (role == ROLE_BLACK && checkban(m_board, &newpos)) {
-          m_msg = "position banned, retrying";
+          msg = "position banned, retrying";
           break;
         }
 
@@ -106,14 +109,14 @@ int pai_start_game()
 
       else {
 
-        m_msg = "position occupied, retrying";
+        msg = "position occupied, retrying";
         break;
 
       }
 
       /* judge */
       if ((winner = judge(m_board, &newpos)) >= 0) {
-        running = 0;
+        msg = winner ? "white win" : "black win";
       }
 
       /*
@@ -162,14 +165,17 @@ int pai_start_game()
         move--;
         m_board[record_pos[move].x][record_pos[move].y] = I_FREE;
         if (move>0) newest = record_pos[move-1];
-        m_msg = "mos recent turn has been undone";
+        msg = "most recent turn has been undone";
       }
       else {
-        m_msg = "unable to undo";
+        msg = "unable to undo";
       }
 
       /* continue placing */
       action = ACTION_PLACE;
+
+      /* reset winner */
+      winner = -1;
 
       break;
 

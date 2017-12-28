@@ -112,7 +112,7 @@ void score_all_points(int scores[BOARD_W][BOARD_H], board_t board, int piece) {
       scores[i][j] = score_point(board, i, j, piece);
 }
 
-void find_max_point(int scores[BOARD_W][BOARD_H], board_t board, int *x, int *y) {
+void find_max_point(int scores[BOARD_W][BOARD_H], board_t board, int role, int *x, int *y) {
   int i, j;
   int score = 0;
   pos p;
@@ -121,7 +121,7 @@ void find_max_point(int scores[BOARD_W][BOARD_H], board_t board, int *x, int *y)
       if (scores[i][j]>score) {
         p.x = i;
         p.y = j;
-        if (!checkban(board, &p)) {
+        if (role == ROLE_WHITE || !checkban(board, &p)) {
           score = scores[i][j];
           *x = i;
           *y = j;
@@ -149,7 +149,7 @@ static int ai_callback(
         return ACTION_PLACE;
       default:
         score_all_points(scores, board, piece);
-        find_max_point(scores, board, &newpos->x, &newpos->y);
+        find_max_point(scores, board, role, &newpos->x, &newpos->y);
         return ACTION_PLACE;
     }
   }
@@ -157,5 +157,5 @@ static int ai_callback(
 }
 
 int ai_register_player(int role) {
-  return pai_register_player(role, ai_callback, 0);
+  return pai_register_player(role, ai_callback, 0, 1);
 }

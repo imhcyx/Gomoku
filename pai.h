@@ -92,12 +92,13 @@ typedef void (*PAI_DISPLAY_CALLBACK)(board_t, pos*, char*);
  * role: black or white
  * callback: the callback function
  * userdata: user-defined data to pass to the callback
+ * autoexit: automatically exit when losing
  *
  * Return value: nonzero on success, zero on failure
  *
  */
 
-int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata);
+int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata, int autoexit);
 
 /*
  * pai_start_game: Start the game
