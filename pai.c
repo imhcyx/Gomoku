@@ -40,7 +40,7 @@ int pai_start_game()
   int role, winner;
   int action;
   pos newpos, newest;
-  
+
   /* check callback pointers */
   
   if (!m_callback[ROLE_WHITE] ||
@@ -116,6 +116,11 @@ int pai_start_game()
         running = 0;
       }
 
+      /*
+      extern int score_board(board_t, int);
+      printf("black: %8d\n", score_board(m_board, I_BLACK));
+      printf("white: %8d\n", score_board(m_board, I_WHITE));
+      */
 #if 0
     s
       /* for debug */

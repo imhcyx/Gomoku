@@ -69,46 +69,6 @@ static void cli_display(board_t board, pos *newest, char *msg) {
   printf("%s\n", msg ? msg : "");
 }
 
-static void cli_displayold(board_t board, pos *newest, char *msg) {
-  int i, j;
-  printf("   ┌");
-  for (i=0; i<BOARD_W; i++)
-    printf("─┬");
-  printf("─┐\n");
-  for (i=0; i<BOARD_H; i++) {
-    printf(" %2d├", BOARD_H - i);
-    for (j=0; j<BOARD_W; j++) {
-      switch (board[j][i]) {
-      case 1:
-        if (newest && newest->x == j && newest->y == i)
-          printf("-▲");
-        else
-          printf("─●");
-        break;
-      case 2:
-        if (newest && newest->x == j && newest->y == i)
-          printf("-△");
-        else
-          printf("─○");
-        break;
-      default:
-        printf("─┼");
-        break;
-      }
-    }
-    printf("─┤\n");
-  }
-  printf("   └");
-  for (i=0; i<BOARD_W; i++)
-    printf("─┴");
-  printf("─┘\n");
-  printf("    ");
-  for (i=0; i<BOARD_W; i++)
-    printf(" %c", 'A' + i);
-  printf("\n\n");
-  printf("%s\n", msg ? msg : "");
-}
-
 /* 0 on failure, non-0 on success  */
 static int cli_parse_coordinate(char *str, pos *p) {
   int i, j;
@@ -175,6 +135,21 @@ static int cli_callback(
 
       /* TODO: commands and EOF  */
 
+#if 1
+      if (!strcmp(buf, "s")) {
+        int scores[BOARD_W][BOARD_H];
+        int x, y;
+        extern void score_all_points(int [BOARD_W][BOARD_H], board_t, int);
+        score_all_points(scores, board, role+1);
+        for (y=0; y<BOARD_H; y++) {
+          for (x=0; x<BOARD_W; x++)
+            printf("%8d ", scores[x][y]);
+          printf("\n");
+        }
+        continue;
+      }
+#endif
+
       /* handle quit  */
       if (!strcmp(buf, "quit") || !strcmp(buf, "q")) {
         result = ACTION_GIVEUP;
@@ -208,13 +183,20 @@ static int cli_callback(
 
 }
 
-int cli_register_player(int role) {
+int cli_init() {
   pai_register_display(cli_display);
+  return 1;
+}
+
+int cli_register_player(int role) {
   return pai_register_player(role, cli_callback, 0);
 }
 
+#if 1
+#include "hash.h"
 void cli_testmode() {
   board_t board = {0};
+  deflate_t deflate;
   pos p;
   char buf[16];
   FILE *file;
@@ -223,7 +205,7 @@ void cli_testmode() {
   extern int count_open_4(board_t, pos*, int);
   extern int count_dash_4(board_t, pos*, int);
   extern int count_open_3(board_t, pos*, int);
- while (1) {
+  while (1) {
     cli_display(board, 0, 0);
     printf("command>");
     fgets(buf, sizeof(buf), stdin);
@@ -322,7 +304,8 @@ void cli_testmode() {
           printf("failed\n");
           break;
         }
-        fwrite(board, 1, sizeof(board), file);
+        deflate_board(deflate, board);
+        fwrite(deflate, 1, sizeof(deflate), file);
         fclose(file);
         break;
       case 'l':
@@ -334,12 +317,13 @@ void cli_testmode() {
           printf("failed\n");
           break;
         }
-        fread(board, 1, sizeof(board), file);
+        fread(deflate, 1, sizeof(deflate), file);
         fclose(file);
+        inflate_board(board, deflate);
         break;
-
       case 'q':
         return;
     }
   }
 }
+#endif
