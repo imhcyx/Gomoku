@@ -10,5 +10,6 @@
 
 int cli_init();
 int cli_register_player(int role);
+void cli_testmode();
 
 #endif /* CLI_H */

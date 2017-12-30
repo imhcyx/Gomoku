@@ -5,6 +5,7 @@
 
 #include "cli.h"
 #include "pai.h"
+#include "hash.h" /* for test mode */
 
 #define ROLENAME(x) (x == ROLE_BLACK ? "black" : "white")
 
@@ -65,7 +66,11 @@ static void cli_display(board_t board, pos *newest, char *msg) {
   printf("   ");
   for (i=0; i<BOARD_W; i++)
     printf(" %c", 'A' + i);
-  printf("\n\n");
+  printf("\n");
+  if (newest)
+    printf("new: %c%d\n", 'A'+newest->x, BOARD_H-newest->y);
+  else
+    printf("\n");
   printf("%s\n", msg ? msg : "");
 }
 
@@ -192,8 +197,6 @@ int cli_register_player(int role) {
   return pai_register_player(role, cli_callback, 0, 0);
 }
 
-#if 1
-#include "hash.h"
 void cli_testmode() {
   board_t board = {0};
   deflate_t deflate;
@@ -326,4 +329,3 @@ void cli_testmode() {
     }
   }
 }
-#endif

@@ -75,7 +75,7 @@ int pai_start_game()
   
   while (running) {
     
-    if (m_dcallback) m_dcallback(m_board, &newest, msg);
+    if (m_dcallback) m_dcallback(m_board, (move?&newest:0), msg);
     msg = 0;
 
     role = move % 2;
