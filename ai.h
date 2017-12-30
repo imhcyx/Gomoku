@@ -25,8 +25,6 @@
 #define SCORE_VO 7
 /* polluted */
 #define SCORE_PO 0
-/* banned, do not always check */
-#define SCORE_BA -2
 
 int ai_register_player(int role);
 

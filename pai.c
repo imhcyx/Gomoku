@@ -19,6 +19,23 @@ static board_t m_board;
 #define RECORD_MAX 256
 pos record_pos[RECORD_MAX];
 
+/* when move count reaches this value, check banned positions */
+#define CHECKFREE_THRESHOLD 200
+
+/* check if all free positions are banned */
+static int isallbanned(board_t board) {
+  int i, j;
+  pos p;
+  for (i=0; i<BOARD_W; i++)
+    for (j=0; j<BOARD_H; j++) {
+      p.x = i;
+      p.y = j;
+      if (board[i][j] == I_FREE && !checkban(board, &p))
+        return 0;
+    }
+  return 1;
+}
+
 int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata, int autoexit)
 {
   if (role < 0 || role >= ROLE_MAX) return 0;
@@ -33,7 +50,8 @@ int pai_start_game()
   
   int running;
   int move;
-  int role, winner;
+  int role;
+  int winner; /* 2=draw */
   int action;
   pos newpos, newest;
   char *msg = 0;
@@ -154,6 +172,14 @@ int pai_start_game()
 
       /* change the role */
       move++;
+
+      /* check if the game ends in a draw */
+      if (move > BOARD_W*BOARD_H ||
+          move > CHECKFREE_THRESHOLD && isallbanned(m_board)) {
+        winner = 2;
+        msg = "end in a draw";
+      }
+
       break;
 
     case ACTION_UNPLACE:

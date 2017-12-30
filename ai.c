@@ -21,7 +21,9 @@ static const int groupdim[][4] = {
   BOARD_W-4,  BOARD_H-4,  0,  4
 };
 
-static inline int score_by_count(int ns, int no) {
+#define MAXPOINTS 40
+
+static inline int score_by_count(int ns, int no, int neg) {
   if (ns && no)
     return SCORE_PO;
   else if (ns)
@@ -32,12 +34,20 @@ static inline int score_by_count(int ns, int no) {
       case 4: return SCORE_S4;
     }
   else if (no)
-    switch (no) {
-      case 1: return SCORE_O1;
-      case 2: return SCORE_O2;
-      case 3: return SCORE_O3;
-      case 4: return SCORE_O4;
-    }
+    if (neg)
+      switch (no) {
+        case 1: return -SCORE_O1;
+        case 2: return -SCORE_O2;
+        case 3: return -SCORE_O3;
+        case 4: return -SCORE_O4;
+      }
+    else
+      switch (no) {
+        case 1: return SCORE_O1;
+        case 2: return SCORE_O2;
+        case 3: return SCORE_O3;
+        case 4: return SCORE_O4;
+      }
   else
     return SCORE_VO;
 }
@@ -58,7 +68,7 @@ int score_board(board_t board, int piece) {
             ns++;
           else if (board[x][y] != I_FREE)
             no++;
-        score += score_by_count(ns, no);
+        score += score_by_count(ns, no, 1);
       }
   return score;
 }
@@ -97,7 +107,7 @@ int score_point(board_t board, int x, int y, int piece) {
           ns++;
         else if (board[i][j] != I_FREE)
           no++;
-      score += score_by_count(ns, no);
+      score += score_by_count(ns, no, 0);
       i0 -= linearr[line][0];
       j0 -= linearr[line][1];
     }
@@ -112,21 +122,50 @@ void score_all_points(int scores[BOARD_W][BOARD_H], board_t board, int piece) {
       scores[i][j] = score_point(board, i, j, piece);
 }
 
-void find_max_point(int scores[BOARD_W][BOARD_H], board_t board, int role, int *x, int *y) {
+int find_max_point(int scores[BOARD_W][BOARD_H], board_t board, int role, int *x, int *y) {
   int i, j;
-  int score = 0;
+  int score = -1;
   pos p;
+  int result = 0;
   for (i=0; i<BOARD_W; i++)
     for (j=0; j<BOARD_H; j++)
       if (scores[i][j]>score) {
         p.x = i;
         p.y = j;
         if (role == ROLE_WHITE || !checkban(board, &p)) {
+          result = 1;
           score = scores[i][j];
           *x = i;
           *y = j;
         }
       }
+  return result;
+}
+
+int find_max_points(int scores[BOARD_W][BOARD_H], board_t board, int role, pos posarr[MAXPOINTS]) {
+  int i, j, k;
+  int maxscores[MAXPOINTS] = {0};
+  int score;
+  pos p;
+  int result = 0;
+  for (i=0; i<BOARD_W; i++)
+    for (j=0; j<BOARD_H; j++) {
+      score = scores[i][j];
+      if (score>maxscores[MAXPOINTS-1]) {
+        p.x = i;
+        p.y = j;
+        if (role == ROLE_WHITE || !checkban(board, &p)) {
+          result = 1;
+          for (k=MAXPOINTS-1; score>maxscores[k-1] && k>0; k--) {
+            maxscores[k] = maxscores[k-1];
+            posarr[k] = posarr[k-1];
+          }
+          maxscores[k] = score;
+          posarr[k] = p;
+        }
+      }
+    }
+  return result;
 }
 
 static int ai_callback(
@@ -140,6 +179,7 @@ static int ai_callback(
 
 {
   int scores[BOARD_W][BOARD_H];
+  pos maxpos[MAXPOINTS];
   int piece = role+1;
   if (action == ACTION_NONE || action == ACTION_PLACE) {
     switch (move) {
@@ -149,7 +189,11 @@ static int ai_callback(
         return ACTION_PLACE;
       default:
         score_all_points(scores, board, piece);
-        find_max_point(scores, board, role, &newpos->x, &newpos->y);
+        /* if all groups are polluted, find_max_points will fail */
+        if (find_max_points(scores, board, role, maxpos))
+          *newpos = maxpos[0];
+        else
+          find_max_point(scores, board, role, &newpos->x, &newpos->y);
         return ACTION_PLACE;
     }
   }
