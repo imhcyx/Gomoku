@@ -5,6 +5,7 @@
 
 #include "pai.h"
 #include "judge.h"
+#include "hash.h" /* for debug */
 
 #define ROLE2ISTATUS(x) (x == ROLE_BLACK ? I_BLACK : I_WHITE)
 
@@ -59,8 +60,10 @@ int pai_start_game()
   /* check callback pointers */
   
   if (!m_callback[ROLE_WHITE] ||
-      !m_callback[ROLE_BLACK])
+      !m_callback[ROLE_BLACK]) {
+    fprintf(stderr, "Error: incomplete role specification\n");
     return -1;
+  }
   
   /* initialize stuffs */
   
@@ -137,11 +140,21 @@ int pai_start_game()
         msg = winner ? "white win" : "black win";
       }
 
-      /*
+#if 1
       extern int score_board(board_t, int);
       printf("black: %8d\n", score_board(m_board, I_BLACK));
       printf("white: %8d\n", score_board(m_board, I_WHITE));
-      */
+      static uint64_t hashvalue;
+      static deflate_t def;
+      delta d;
+      deflate_t def2;
+      deflate_board(def2, m_board);
+      d.newpos = newpos;
+      d.piece = ROLE2ISTATUS(role);
+      hashvalue = hash_deflate_delta(hashvalue, def, &d);
+      printf("hash_deflate: %016lx\n", hash_deflate(def2));
+      printf("hash_deflate_delta: %016lx\n", hashvalue); 
+#endif
 #if 0
     s
       /* for debug */

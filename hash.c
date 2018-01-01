@@ -4,6 +4,7 @@
  */
 
 #include "hash.h"
+#include "zobrist.h"
 
 void deflate_board(deflate_t def, board_t board) {
   int i, j;
@@ -30,4 +31,27 @@ void deflate_delta(deflate_t def, delta *d) {
   mask1 = ~(3<<(index%4)*2);
   mask2 = d->piece<<(index%4)*2;
   def[index/4] = def[index/4]&mask1|mask2;
+}
+
+HASHVALUE hash_deflate(deflate_t def) {
+  int i, piece;
+  HASHVALUE value = 0;
+  for (i=0; i<BOARD_W*BOARD_H; i++) {
+      piece = def[i/4]>>(i%4)*2&3;
+      if (piece)
+        value ^= zobrist[i*piece];
+  }
+  return value;
+}
+
+HASHVALUE hash_deflate_delta(HASHVALUE oldvalue, deflate_t def, delta *d) {
+  int i, j, index;
+  char mask1, mask2;
+  i = d->newpos.x;
+  j = d->newpos.y;
+  index = i*BOARD_H+j;
+  mask1 = ~(3<<(index%4)*2);
+  mask2 = d->piece<<(index%4)*2;
+  def[index/4] = def[index/4]&mask1|mask2;
+  return oldvalue ^ zobrist[index*d->piece];
 }

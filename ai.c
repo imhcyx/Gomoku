@@ -21,7 +21,7 @@ static const int groupdim[][4] = {
   BOARD_W-4,  BOARD_H-4,  0,  4
 };
 
-#define MAXPOINTS 40
+#define ALPHABETA_MAXP 5
 
 static inline int score_by_count(int ns, int no, int neg) {
   if (ns && no)
@@ -32,6 +32,7 @@ static inline int score_by_count(int ns, int no, int neg) {
       case 2: return SCORE_S2;
       case 3: return SCORE_S3;
       case 4: return SCORE_S4;
+      case 5: return SCORE_S5;
     }
   else if (no)
     if (neg)
@@ -40,6 +41,7 @@ static inline int score_by_count(int ns, int no, int neg) {
         case 2: return -SCORE_O2;
         case 3: return -SCORE_O3;
         case 4: return -SCORE_O4;
+        case 5: return -SCORE_O5;
       }
     else
       switch (no) {
@@ -47,6 +49,7 @@ static inline int score_by_count(int ns, int no, int neg) {
         case 2: return SCORE_O2;
         case 3: return SCORE_O3;
         case 4: return SCORE_O4;
+        case 5: return SCORE_O5;
       }
   else
     return SCORE_VO;
@@ -124,7 +127,7 @@ void score_all_points(int scores[BOARD_W][BOARD_H], board_t board, int piece) {
 
 int find_max_point(int scores[BOARD_W][BOARD_H], board_t board, int role, int *x, int *y) {
   int i, j;
-  int score = -1;
+  int score = 0;
   pos p;
   int result = 0;
   for (i=0; i<BOARD_W; i++)
@@ -142,21 +145,21 @@ int find_max_point(int scores[BOARD_W][BOARD_H], board_t board, int role, int *x
   return result;
 }
 
-int find_max_points(int scores[BOARD_W][BOARD_H], board_t board, int role, pos posarr[MAXPOINTS]) {
+int find_max_points(int scores[BOARD_W][BOARD_H], board_t board, int role, pos *posarr, int num) {
   int i, j, k;
-  int maxscores[MAXPOINTS] = {0};
+  int maxscores[64] = {0};
   int score;
   pos p;
   int result = 0;
   for (i=0; i<BOARD_W; i++)
     for (j=0; j<BOARD_H; j++) {
       score = scores[i][j];
-      if (score>maxscores[MAXPOINTS-1]) {
+      if (score>maxscores[num-1]) {
         p.x = i;
         p.y = j;
         if (role == ROLE_WHITE || !checkban(board, &p)) {
           result = 1;
-          for (k=MAXPOINTS-1; score>maxscores[k-1] && k>0; k--) {
+          for (k=num-1; score>maxscores[k-1] && k>0; k--) {
             maxscores[k] = maxscores[k-1];
             posarr[k] = posarr[k-1];
           }
@@ -168,7 +171,46 @@ int find_max_points(int scores[BOARD_W][BOARD_H], board_t board, int role, pos p
   return result;
 }
 
-static int ai_callback(
+int alphabeta(
+    int role,
+    int maxnode,
+    int depth,
+    int alpha,
+    int beta,
+    board_t board,
+    pos *newpos
+    )
+{
+  int i, t;
+  int scores[BOARD_W][BOARD_H];
+  pos maxpos[64];
+  if (depth<=0)
+    return score_board(board, role+1);
+  score_all_points(scores, board, role+1);
+  find_max_points(scores, board, role, maxpos, ALPHABETA_MAXP);
+  for (i=0; i<ALPHABETA_MAXP; i++) {
+    board[maxpos[i].x][maxpos[i].y] = role+1;
+    t = -alphabeta(role^1, !maxnode, depth-1, -beta, -alpha, board, &maxpos[i]);
+    board[maxpos[i].x][maxpos[i].y] = I_FREE;
+    if (maxnode) {
+      if (t>alpha)
+        if (t>beta)
+          return t;
+        else
+          alpha = t;
+    }
+    else {
+      if (t<beta)
+        if (t<alpha)
+          return t;
+        else
+          beta = t;
+    }
+  }
+  return maxnode?alpha:beta;
+}
+
+static int ai_callback1(
     int role,
     int action,
     int move,
@@ -178,8 +220,9 @@ static int ai_callback(
     )
 
 {
+  int i, n;
   int scores[BOARD_W][BOARD_H];
-  pos maxpos[MAXPOINTS];
+  pos maxpos[64];
   int piece = role+1;
   if (action == ACTION_NONE || action == ACTION_PLACE) {
     switch (move) {
@@ -187,19 +230,84 @@ static int ai_callback(
         newpos->x = (BOARD_W-1)/2;
         newpos->y = (BOARD_H-1)/2;
         return ACTION_PLACE;
+      case 1:
+        n = 0;
+        for (i=0; i<4; i++) {
+          maxpos[n].x = (BOARD_W-1)/2+linearr[2+i/2][0]*(i%2?1:-1);
+          maxpos[n].y = (BOARD_H-1)/2+linearr[2+i/2][1]*(i%2?1:-1);
+          if (board[maxpos[n].x][maxpos[n].y] == I_FREE)
+            n++;
+        }
+        i = rand() % n;
+        *newpos = maxpos[i];
+        return ACTION_PLACE;
       default:
         score_all_points(scores, board, piece);
-        /* if all groups are polluted, find_max_points will fail */
-        if (find_max_points(scores, board, role, maxpos))
-          *newpos = maxpos[0];
-        else
-          find_max_point(scores, board, role, &newpos->x, &newpos->y);
+        find_max_points(scores, board, role, maxpos, 40);
+        for (n=0; n<40 && scores[maxpos[0].x][maxpos[0].y]==scores[maxpos[n].x][maxpos[n].y]; n++);
+        i = rand() % n;
+        *newpos = maxpos[i];
         return ACTION_PLACE;
     }
   }
   return 0;
 }
 
-int ai_register_player(int role) {
-  return pai_register_player(role, ai_callback, 0, 1);
+static int ai_callback2(
+    int role,
+    int action,
+    int move,
+    pos *newpos,
+    board_t board,
+    void *userdata
+    )
+
+{
+  int i, n;
+  int scores[BOARD_W][BOARD_H];
+  pos maxpos[64];
+  int piece = role+1;
+  int maxscore = 0;
+  if (action == ACTION_NONE || action == ACTION_PLACE) {
+    switch (move) {
+      case 0:
+        newpos->x = (BOARD_W-1)/2;
+        newpos->y = (BOARD_H-1)/2;
+        return ACTION_PLACE;
+      case 1:
+        n = 0;
+        for (i=0; i<4; i++) {
+          maxpos[n].x = (BOARD_W-1)/2+linearr[2+i/2][0]*(i%2?1:-1);
+          maxpos[n].y = (BOARD_H-1)/2+linearr[2+i/2][1]*(i%2?1:-1);
+          if (board[maxpos[n].x][maxpos[n].y] == I_FREE)
+            n++;
+        }
+        i = rand() % n;
+        *newpos = maxpos[i];
+        return ACTION_PLACE;
+      default:
+        score_all_points(scores, board, piece);
+        find_max_points(scores, board, role, maxpos, ALPHABETA_MAXP);
+        for (i=0; i<ALPHABETA_MAXP; i++) {
+          n = alphabeta(role, 1, 5, 10000000, -10000000, board, &maxpos[i]);
+          if (n>maxscore) {
+            maxscore = n;
+            *newpos = maxpos[i];
+          }
+        }
+        return ACTION_PLACE;
+    }
+  }
+  return 0;
+}
+
+int ai_register_player(int role, int aitype) {
+  switch (aitype) {
+    case 1:
+      return pai_register_player(role, ai_callback1, 0, 1);
+    case 2:
+      return pai_register_player(role, ai_callback2, 0, 1);
+    default:
+      return 0;
+  }
 }

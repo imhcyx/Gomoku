@@ -17,9 +17,13 @@ typedef struct {
   int piece; /* I_BLACK or I_WHITE */
 } delta;
 
+typedef uint64_t HASHVALUE;
+
 void deflate_board(deflate_t, board_t);
 void inflate_board(board_t, deflate_t);
 void deflate_delta(deflate_t, delta*);
+HASHVALUE hash_deflate(deflate_t);
+HASHVALUE hash_deflate_delta(HASHVALUE, deflate_t, delta*);
 
 #define PIECE_BY_DEFLATE(def, x, y) \
   ((def)[(x*BOARD_H+j)/4]>>((i*BOARD_H+j)%4)*2&3)
