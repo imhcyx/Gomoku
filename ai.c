@@ -21,7 +21,7 @@ static const int groupdim[][4] = {
   BOARD_W-4,  BOARD_H-4,  0,  4
 };
 
-#define ALPHABETA_MAXP 5
+#define ALPHABETA_MAXP 8
 
 static inline int score_by_count(int ns, int no, int neg) {
   if (ns && no)
@@ -150,7 +150,7 @@ int find_max_points(int scores[BOARD_W][BOARD_H], board_t board, int role, pos *
   int maxscores[64] = {0};
   int score;
   pos p;
-  int result = 0;
+  int n = 0;
   for (i=0; i<BOARD_W; i++)
     for (j=0; j<BOARD_H; j++) {
       score = scores[i][j];
@@ -158,22 +158,22 @@ int find_max_points(int scores[BOARD_W][BOARD_H], board_t board, int role, pos *
         p.x = i;
         p.y = j;
         if (role == ROLE_WHITE || !checkban(board, &p)) {
-          result = 1;
           for (k=num-1; score>maxscores[k-1] && k>0; k--) {
             maxscores[k] = maxscores[k-1];
             posarr[k] = posarr[k-1];
           }
           maxscores[k] = score;
           posarr[k] = p;
+          n++;
         }
       }
     }
-  return result;
+  if (n>num) n = num;
+  return n;
 }
 
 int alphabeta(
     int role,
-    int maxnode,
     int depth,
     int alpha,
     int beta,
@@ -181,33 +181,29 @@ int alphabeta(
     pos *newpos
     )
 {
-  int i, t;
+  int i, n, t;
   int scores[BOARD_W][BOARD_H];
   pos maxpos[64];
+  //printf("depth:%2d alpha:%9d beta:%9d\n", depth, alpha, beta);
+  i = judge(board, newpos);
+  if (i==role)
+    return SCORE_INF;
+  else if (i>=0)
+    return -SCORE_INF;
   if (depth<=0)
     return score_board(board, role+1);
   score_all_points(scores, board, role+1);
-  find_max_points(scores, board, role, maxpos, ALPHABETA_MAXP);
-  for (i=0; i<ALPHABETA_MAXP; i++) {
+  n = find_max_points(scores, board, role, maxpos, ALPHABETA_MAXP);
+  for (i=0; i<n; i++) {
     board[maxpos[i].x][maxpos[i].y] = role+1;
-    t = -alphabeta(role^1, !maxnode, depth-1, -beta, -alpha, board, &maxpos[i]);
+    t = -alphabeta(role^1, depth-1, -beta, -alpha, board, &maxpos[i]);
     board[maxpos[i].x][maxpos[i].y] = I_FREE;
-    if (maxnode) {
-      if (t>alpha)
-        if (t>beta)
-          return t;
-        else
-          alpha = t;
-    }
-    else {
-      if (t<beta)
-        if (t<alpha)
-          return t;
-        else
-          beta = t;
-    }
+    if (t>alpha)
+      alpha = t;
+    if (alpha>=beta)
+      break;
   }
-  return maxnode?alpha:beta;
+  return alpha;
 }
 
 static int ai_callback1(
@@ -221,6 +217,7 @@ static int ai_callback1(
 
 {
   int i, n;
+  int num;
   int scores[BOARD_W][BOARD_H];
   pos maxpos[64];
   int piece = role+1;
@@ -243,8 +240,8 @@ static int ai_callback1(
         return ACTION_PLACE;
       default:
         score_all_points(scores, board, piece);
-        find_max_points(scores, board, role, maxpos, 40);
-        for (n=0; n<40 && scores[maxpos[0].x][maxpos[0].y]==scores[maxpos[n].x][maxpos[n].y]; n++);
+        num = find_max_points(scores, board, role, maxpos, 40);
+        for (n=0; n<num && scores[maxpos[0].x][maxpos[0].y]==scores[maxpos[n].x][maxpos[n].y]; n++);
         i = rand() % n;
         *newpos = maxpos[i];
         return ACTION_PLACE;
@@ -264,6 +261,7 @@ static int ai_callback2(
 
 {
   int i, n;
+  int num;
   int scores[BOARD_W][BOARD_H];
   pos maxpos[64];
   int piece = role+1;
@@ -287,14 +285,19 @@ static int ai_callback2(
         return ACTION_PLACE;
       default:
         score_all_points(scores, board, piece);
-        find_max_points(scores, board, role, maxpos, ALPHABETA_MAXP);
-        for (i=0; i<ALPHABETA_MAXP; i++) {
-          n = alphabeta(role, 1, 5, 10000000, -10000000, board, &maxpos[i]);
+        num = find_max_points(scores, board, role, maxpos, ALPHABETA_MAXP);
+        for (i=0; i<num; i++) {
+          board[maxpos[i].x][maxpos[i].y] = role+1;
+          n = -alphabeta(role^1, 6, -SCORE_INF, SCORE_INF, board, &maxpos[i]);
+          board[maxpos[i].x][maxpos[i].y] = I_FREE;
+          printf("score: %d\n", n);
           if (n>maxscore) {
             maxscore = n;
             *newpos = maxpos[i];
           }
         }
+        if (!maxscore)
+          *newpos = maxpos[0];
         return ACTION_PLACE;
     }
   }

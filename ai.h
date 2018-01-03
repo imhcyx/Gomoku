@@ -11,6 +11,7 @@
 #include "hash.h"
 #include "judge.h"
 
+#define SCORE_INF 100000000
 /* score for self */
 #define SCORE_S1 35
 #define SCORE_S2 800
