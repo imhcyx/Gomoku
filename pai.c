@@ -145,15 +145,10 @@ int pai_start_game()
       printf("black: %8d\n", score_board(m_board, I_BLACK));
       printf("white: %8d\n", score_board(m_board, I_WHITE));
       static uint64_t hashvalue;
-      static deflate_t def;
-      delta d;
-      deflate_t def2;
-      deflate_board(def2, m_board);
-      d.newpos = newpos;
-      d.piece = ROLE2ISTATUS(role);
-      hashvalue = hash_deflate_delta(hashvalue, def, &d);
-      printf("hash_deflate: %016lx\n", hash_deflate(def2));
-      printf("hash_deflate_delta: %016lx\n", hashvalue); 
+      static board_t board2;
+      hashvalue = hash_board_delta(hashvalue, board2, newpos.x, newpos.y, ROLE2ISTATUS(role), 0);
+      printf("hash_board: %016lx\n", hash_board(m_board));
+      printf("hash_board_delta: %016lx\n", hashvalue); 
 #endif
 #if 0
     s

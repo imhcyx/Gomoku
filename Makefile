@@ -1,6 +1,6 @@
-CC = gcc
+CC = clang
 OUTFILE = gomoku
-CFLAGS = -g
+CFLAGS = -g -O3
 LINKER_FLAGS =
 
 .DEFAULT_GOAL := all
