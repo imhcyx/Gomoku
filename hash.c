@@ -14,7 +14,7 @@ typedef struct _hash_node {
   int value;
 } hash_node;
 
-#define HASHBIN_PRIME 7
+#define HASHBIN_PRIME 97
 
 typedef struct {
   hash_node *node[HASHBIN_PRIME]; /* subscript = hash % HASHBIN_PRIME */
@@ -113,6 +113,7 @@ void hashtable_store(HASHVALUE hash, int depth, hash_type type, int value) {
   hash_node *node;
   i = hash >> (sizeof(HASHVALUE)-1)*8;
   j = hash % HASHBIN_PRIME;
+  /* TODO: handle error for malloc */
   node = malloc(sizeof(hash_node));
   node->hash = hash;
   node->depth = depth;

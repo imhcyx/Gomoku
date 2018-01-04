@@ -56,6 +56,7 @@ int pai_start_game()
   int action;
   pos newpos, newest;
   char *msg = 0;
+  clock_t time1, time2;
 
   /* check callback pointers */
   
@@ -73,12 +74,15 @@ int pai_start_game()
   role = ROLE_BLACK;
   winner = -1;
   action = 0;
+  time1 = clock();
 
   /* run the game */
   
   while (running) {
     
-    if (m_dcallback) m_dcallback(m_board, (move?&newest:0), msg);
+    time2 = clock();
+    if (m_dcallback) m_dcallback(m_board, (move?&newest:0), msg, time2-time1);
+    time1 = time2;
     msg = 0;
 
     role = move % 2;
@@ -140,7 +144,7 @@ int pai_start_game()
         msg = winner ? "white win" : "black win";
       }
 
-#if 1
+#if 0
       extern int score_board(board_t, int);
       printf("black: %8d\n", score_board(m_board, I_BLACK));
       printf("white: %8d\n", score_board(m_board, I_WHITE));

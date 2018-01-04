@@ -101,7 +101,7 @@ static inline int char_match(board_t board, int x, int y, char pattern) {
 }
 
 /* initial start=-5 */
-static int pat_match(board_t board, pos *newpos, int line, const char *pat, int start, int *result) {
+static inline int pat_match(board_t board, pos *newpos, int line, const char *pat, int start, int *result) {
   int i, j;
   int l = strlen(pat);
   pos p;
@@ -153,7 +153,7 @@ static inline int count_line(board_t board, pos *newpos, int line) {
   return n;
 }
 
-/*static*/ int count_open_4(board_t board, pos *newpos, int line) {
+static inline int count_open_4(board_t board, pos *newpos, int line) {
   int i, start, count;
   count = 0;
   for (i=0; i<sizeof(patopen4)/sizeof(char*); i++) {
@@ -164,7 +164,7 @@ static inline int count_line(board_t board, pos *newpos, int line) {
   return count;
 }
 
-/*static*/ int count_dash_4(board_t board, pos *newpos, int line) {
+static inline int count_dash_4(board_t board, pos *newpos, int line) {
   int i, start, count;
   count = 0;
   for (i=0; i<sizeof(patdash4)/sizeof(char*); i++) {
@@ -175,7 +175,7 @@ static inline int count_line(board_t board, pos *newpos, int line) {
   return count;
 }
 
-/*static*/ int count_open_3(board_t board, pos *newpos, int line) {
+static inline int count_open_3(board_t board, pos *newpos, int line) {
   int i, j, result, start, count;
   pos p;
   count = 0;

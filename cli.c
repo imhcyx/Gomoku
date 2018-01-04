@@ -10,7 +10,7 @@
 #define ROLENAME(x) (x == ROLE_BLACK ? "black" : "white")
 
 /* display the board */
-static void cli_display(board_t board, pos *newest, char *msg) {
+static void cli_display(board_t board, pos *newest, char *msg, clock_t time) {
   int i, j;
   printf("\n");
   for (i=0; i<BOARD_H; i++) {
@@ -71,7 +71,12 @@ static void cli_display(board_t board, pos *newest, char *msg) {
     printf("new: %c%d\n", 'A'+newest->x, BOARD_H-newest->y);
   else
     printf("\n");
-  printf("%s\n", msg ? msg : "");
+  if (msg)
+    printf("%s\n", msg);
+  else if (time)
+    printf("processing time: %.3lfs\n", time / 1000000.0);
+  else
+    printf("\n");
 }
 
 /* 0 on failure, non-0 on success  */
@@ -205,11 +210,8 @@ void cli_testmode() {
   FILE *file;
   extern int judge(board_t,pos*);
   extern int checkban(board_t,pos*);
-  extern int count_open_4(board_t, pos*, int);
-  extern int count_dash_4(board_t, pos*, int);
-  extern int count_open_3(board_t, pos*, int);
   while (1) {
-    cli_display(board, 0, 0);
+    cli_display(board, 0, 0, 0);
     printf("command>");
     fgets(buf, sizeof(buf), stdin);
     buf[strlen(buf)-1] = '\0';
@@ -266,35 +268,6 @@ void cli_testmode() {
             p.x >= 0 && p.x < BOARD_W &&
             p.y >= 0 && p.y < BOARD_H)
           printf("checkban: %d\n", checkban(board, &p));
-        else
-          printf("invalid\n");
-        break;
-      case 't':
-        printf("pos:");
-        fgets(buf, sizeof(buf), stdin);
-        buf[strlen(buf)-1] = '\0';
-        if (cli_parse_coordinate(buf, &p) &&
-            p.x >= 0 && p.x < BOARD_W &&
-            p.y >= 0 && p.y < BOARD_H) {
-          printf("count_open_4: %d,%d,%d,%d\n",
-            count_open_4(board, &p, 0),
-            count_open_4(board, &p, 1),
-            count_open_4(board, &p, 2),
-            count_open_4(board, &p, 3)
-            );
-          printf("count_dash_4: %d,%d,%d,%d\n",
-            count_dash_4(board, &p, 0),
-            count_dash_4(board, &p, 1),
-            count_dash_4(board, &p, 2),
-            count_dash_4(board, &p, 3)
-            );
-          printf("count_open_3: %d,%d,%d,%d\n",
-            count_open_3(board, &p, 0),
-            count_open_3(board, &p, 1),
-            count_open_3(board, &p, 2),
-            count_open_3(board, &p, 3)
-            );
-        }
         else
           printf("invalid\n");
         break;

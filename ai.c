@@ -21,7 +21,8 @@ static const int groupdim[][4] = {
   BOARD_W-4,  BOARD_H-4,  0,  4
 };
 
-#define ALPHABETA_MAXP 15
+#define ALPHABETA_WIDTH 15
+#define ALPHABETA_DEPTH 8
 
 static inline int score_by_count(int ns, int no, int neg) {
   if (ns && no)
@@ -187,16 +188,14 @@ int alphabeta(
   int scores[BOARD_W][BOARD_H];
   pos maxpos[64];
   i = judge(board, newpos);
-  if (i==role)
-    return SCORE_INF;
-  else if (i>=0)
+  if (i>=0 && i!=role)
     return -SCORE_INF;
   if (depth<=0)
     return score_board(board, role+1);
   if (hashtable_lookup(hash, depth, alpha, beta, &t))
     return t; 
   score_all_points(scores, board, role+1);
-  n = find_max_points(scores, board, role, maxpos, ALPHABETA_MAXP);
+  n = find_max_points(scores, board, role, maxpos, ALPHABETA_WIDTH);
   for (i=0; i<n; i++) {
     hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 0);
     t = -alphabeta(hash, role^1, depth-1, -beta, -alpha, board, &maxpos[i]);
@@ -224,24 +223,21 @@ int negamax(
   HASHVALUE hash;
   int alpha = -SCORE_INF, beta = SCORE_INF;
   int i, n, t;
-  int maxscore = 0;
   int scores[BOARD_W][BOARD_H];
   pos maxpos[64];
   if (depth<=0)
     return score_board(board, role+1);
   hash = hash_board(board);
   score_all_points(scores, board, role+1);
-  n = find_max_points(scores, board, role, maxpos, ALPHABETA_MAXP);
+  n = find_max_points(scores, board, role, maxpos, ALPHABETA_WIDTH);
   *result = maxpos[0];
   for (i=0; i<n; i++) {
     hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 0);
     t = -alphabeta(hash, role^1, depth-1, -beta, -alpha, board, &maxpos[i]);
     hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 1);
     printf("score (%d,%d): %d\n", maxpos[i].x, maxpos[i].y, t);
-    if (t>alpha)
+    if (t>alpha) {
       alpha = t;
-    if (t>maxscore) {
-      maxscore = t;
       *result = maxpos[i];
     }
     if (alpha>=beta)
@@ -325,8 +321,8 @@ static int ai_callback2(
         *newpos = maxpos[i];
         return ACTION_PLACE;
       default:
-        n = negamax(role, 8, board, &p);
-        printf("score: %d\n", n);
+        n = negamax(role, ALPHABETA_DEPTH, board, &p);
+        //printf("score: %d\n", n);
         *newpos = p;
         return ACTION_PLACE;
     }

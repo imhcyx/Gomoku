@@ -82,7 +82,7 @@
 typedef int (*PAI_PLAYER_CALLBACK)(int, int, int, pos*, board_t, void*);
 
 /*TODO*/
-typedef void (*PAI_DISPLAY_CALLBACK)(board_t, pos*, char*);
+typedef void (*PAI_DISPLAY_CALLBACK)(board_t, pos*, char*, clock_t);
 
 /* Public functions */
 
