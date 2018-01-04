@@ -179,15 +179,13 @@ int alphabeta(
     int alpha,
     int beta,
     board_t board,
-    pos *newpos,
-    pos *result
+    pos *newpos
     )
 {
   int i, n, t;
   hash_type type = hash_alpha;
   int scores[BOARD_W][BOARD_H];
   pos maxpos[64];
-  //printf("depth:%2d alpha:%9d beta:%9d\n", depth, alpha, beta);
   i = judge(board, newpos);
   if (i==role)
     return SCORE_INF;
@@ -201,13 +199,11 @@ int alphabeta(
   n = find_max_points(scores, board, role, maxpos, ALPHABETA_MAXP);
   for (i=0; i<n; i++) {
     hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 0);
-    t = -alphabeta(hash, role^1, depth-1, -beta, -alpha, board, &maxpos[i], 0);
+    t = -alphabeta(hash, role^1, depth-1, -beta, -alpha, board, &maxpos[i]);
     hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 1);
     if (t>alpha) {
       type = hash_exact;
       alpha = t;
-      if (result)
-        *result = maxpos[i];
     }
     if (alpha>=beta) {
       type = hash_beta;
@@ -215,6 +211,42 @@ int alphabeta(
     }
   }
   hashtable_store(hash, depth, type, alpha);
+  return alpha;
+}
+
+int negamax(
+    int role,
+    int depth,
+    board_t board,
+    pos *result
+    )
+{
+  HASHVALUE hash;
+  int alpha = -SCORE_INF, beta = SCORE_INF;
+  int i, n, t;
+  int maxscore = 0;
+  int scores[BOARD_W][BOARD_H];
+  pos maxpos[64];
+  if (depth<=0)
+    return score_board(board, role+1);
+  hash = hash_board(board);
+  score_all_points(scores, board, role+1);
+  n = find_max_points(scores, board, role, maxpos, ALPHABETA_MAXP);
+  *result = maxpos[0];
+  for (i=0; i<n; i++) {
+    hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 0);
+    t = -alphabeta(hash, role^1, depth-1, -beta, -alpha, board, &maxpos[i]);
+    hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 1);
+    printf("score (%d,%d): %d\n", maxpos[i].x, maxpos[i].y, t);
+    if (t>alpha)
+      alpha = t;
+    if (t>maxscore) {
+      maxscore = t;
+      *result = maxpos[i];
+    }
+    if (alpha>=beta)
+      break;
+  }
   return alpha;
 }
 
@@ -273,7 +305,6 @@ static int ai_callback2(
     )
 
 {
-  HASHVALUE hash;
   int i, n;
   int num;
   int scores[BOARD_W][BOARD_H];
@@ -283,45 +314,20 @@ static int ai_callback2(
   if (action == ACTION_NONE || action == ACTION_PLACE) {
     switch (move) {
       case 0:
-      case 1:
         newpos->x = (BOARD_W-1)/2;
         newpos->y = (BOARD_H-1)/2;
-        if (board[newpos->x][newpos->y] != I_FREE) {
-          n = 0;
-          for (i=0; i<4; i++) {
-            maxpos[n].x = (BOARD_W-1)/2+linearr[2+i/2][0]*(i%2?1:-1);
-            maxpos[n].y = (BOARD_H-1)/2+linearr[2+i/2][1]*(i%2?1:-1);
-            if (board[maxpos[n].x][maxpos[n].y] == I_FREE)
-              n++;
-          }
-          i = rand() % n;
-          *newpos = maxpos[i];
-        }
+        return ACTION_PLACE;
+      case 1:
+        score_all_points(scores, board, piece);
+        num = find_max_points(scores, board, role, maxpos, 40);
+        for (n=0; n<num && scores[maxpos[0].x][maxpos[0].y]==scores[maxpos[n].x][maxpos[n].y]; n++);
+        i = rand() % n;
+        *newpos = maxpos[i];
         return ACTION_PLACE;
       default:
-        score_all_points(scores, board, piece);
-        num = find_max_points(scores, board, role, maxpos, ALPHABETA_MAXP);
-        hash = hash_board(board);
-        /*
-        for (i=0; i<num; i++) {
-          hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 0);
-          n = -alphabeta(hash, role^1, 8, -SCORE_INF, SCORE_INF, board, &maxpos[i]);
-          hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 1);
-          printf("score: (%d, %d) %d\n", maxpos[i].x, maxpos[i].y, n);
-          if (n>maxscore) {
-            maxscore = n;
-            *newpos = maxpos[i];
-          }
-        }
-        if (!maxscore)
-          *newpos = maxpos[0];
-        */
-        n = alphabeta(hash, role, 8, -SCORE_INF, SCORE_INF, board, newpos, &p);
+        n = negamax(role, 8, board, &p);
         printf("score: %d\n", n);
-        if (n>0)
-          *newpos = p;
-        else
-          *newpos = maxpos[0];
+        *newpos = p;
         return ACTION_PLACE;
     }
   }
@@ -336,9 +342,9 @@ int ai_register_player(int role, int aitype) {
     case 1:
       return pai_register_player(role, ai_callback1, 0, 1);
     case 2:
+      hashtable_init();
       return pai_register_player(role, ai_callback2, 0, 1);
     default:
       return 0;
   }
-  hashtable_init();
 }

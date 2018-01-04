@@ -18,10 +18,12 @@ typedef struct _hash_node {
 
 typedef struct {
   hash_node *node[HASHBIN_PRIME]; /* subscript = hash % HASHBIN_PRIME */
+  int count[HASHBIN_PRIME];
 } hash_bin;
 
 /* subscript = high byte of hash */
 static hash_bin m_hashbin[256];
+static int m_init = 0;
 
 void deflate_board(deflate_t def, board_t board) {
   int i, j;
@@ -82,22 +84,28 @@ HASHVALUE hash_deflate_delta(HASHVALUE oldvalue, deflate_t def, int newx, int ne
 }
 
 void hashtable_init() {
-  memset(m_hashbin, 0, sizeof(m_hashbin));
+  if (!m_init) {
+    memset(m_hashbin, 0, sizeof(m_hashbin));
+    m_init = 1;
+  }
 }
 
 void hashtable_fini() {
   int i, j;
   hash_node *node, *next;
+  if (!m_init) return;
   for (i=0; i<256; i++)
     for (j=0; j<HASHBIN_PRIME; j++) {
       node = m_hashbin[i].node[j];
-      m_hashbin[i].node[j] = 0;
+      /* test only */
+      //fprintf(stderr, "bin[%d][%d]: %d\n", i, j, m_hashbin[i].count[j]);
       while (node) {
         next = node->next;
         free(node);
         node = next;
       }
     }
+  m_init = 0;
 }
 
 void hashtable_store(HASHVALUE hash, int depth, hash_type type, int value) {
@@ -112,6 +120,7 @@ void hashtable_store(HASHVALUE hash, int depth, hash_type type, int value) {
   node->value = value;
   node->next = m_hashbin[i].node[j];
   m_hashbin[i].node[j] = node;
+  m_hashbin[i].count[j]++;
 }
 
 int hashtable_lookup(HASHVALUE hash, int depth, int alpha, int beta, int *pvalue) {
