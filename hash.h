@@ -11,7 +11,10 @@
 /* compressed board for less storage */
 typedef char deflate_t[64];
 
+/* hash value type (64-bit integer) */
 typedef uint64_t HASHVALUE;
+
+/* functions for board_t and deflate_t conversion */
 
 void deflate_board(deflate_t, board_t);
 void inflate_board(board_t, deflate_t);

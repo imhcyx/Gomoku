@@ -7,13 +7,19 @@
 #include "judge.h"
 #include "hash.h" /* for debug */
 
+/* convert role id to piece number */
 #define ROLE2ISTATUS(x) (x == ROLE_BLACK ? I_BLACK : I_WHITE)
 
+/* player callbacks */
 static PAI_PLAYER_CALLBACK m_callback[ROLE_MAX];
+/* player userdata for callbacks */
 static void *m_userdata[ROLE_MAX];
+/* automatically exit when game ends */
 static int m_autoexit[ROLE_MAX];
+/* display callback */
 static PAI_DISPLAY_CALLBACK m_dcallback;
 
+/* the board maintained by PAI */
 static board_t m_board;
 
 /* position record */
@@ -39,7 +45,9 @@ static int isallbanned(board_t board) {
 
 int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata, int autoexit)
 {
+  /* check role id */
   if (role < 0 || role >= ROLE_MAX) return 0;
+  /* save parameters */
   m_callback[role] = callback;
   m_userdata[role] = userdata;
   m_autoexit[role] = autoexit;
@@ -49,11 +57,11 @@ int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata, 
 int pai_start_game()
 {
   
-  int running;
-  int move;
-  int role;
-  int winner; /* 2=draw */
-  int action;
+  int running; /* running flag */
+  int move; /* move count */
+  int role; /* current role if */
+  int winner; /* winner, -1=none, 2=draw */
+  int action; /* action returned by player callback */
   pos newpos, newest;
   char *msg = 0;
   clock_t time1, time2;
@@ -80,13 +88,19 @@ int pai_start_game()
   
   while (running) {
     
+    /* call display callback and calculate time */
     time2 = clock();
     if (m_dcallback) m_dcallback(m_board, (move?&newest:0), msg, time2-time1);
     time1 = time2;
     msg = 0;
 
+    /* set role id */
     role = move % 2;
+
+    /* if the player is registered with autoexit, exit when game ends */
     if (winner >= 0 && m_autoexit[role]) break;
+
+    /* call player callback */
     action = m_callback[role](role, action, move, &newpos, m_board, m_userdata[role]);
 
     switch (action) {
@@ -154,35 +168,8 @@ int pai_start_game()
       printf("hash_board: %016lx\n", hash_board(m_board));
       printf("hash_board_delta: %016lx\n", hashvalue); 
 #endif
-#if 0
-    s
-      /* for debug */
-      extern int count_open_4(board_t, pos*, int);
-      extern int count_dash_4(board_t, pos*, int);
-      extern int count_open_3(board_t, pos*, int);
-      if (role == ROLE_BLACK) {
-        printf("count_open_4: %d,%d,%d,%d\n",
-           count_open_4(m_board, &newpos, 0),
-           count_open_4(m_board, &newpos, 1),
-           count_open_4(m_board, &newpos, 2),
-           count_open_4(m_board, &newpos, 3)
-           );
-        printf("count_dash_4: %d,%d,%d,%d\n",
-           count_dash_4(m_board, &newpos, 0),
-           count_dash_4(m_board, &newpos, 1),
-           count_dash_4(m_board, &newpos, 2),
-           count_dash_4(m_board, &newpos, 3)
-           );
-        printf("count_open_3: %d,%d,%d,%d\n",
-           count_open_3(m_board, &newpos, 0),
-           count_open_3(m_board, &newpos, 1),
-           count_open_3(m_board, &newpos, 2),
-           count_open_3(m_board, &newpos, 3)
-           );
-      }
-#endif
 
-      /* change the role */
+      /* increase move count */
       move++;
 
       /* check if the game ends in a draw */
@@ -202,6 +189,7 @@ int pai_start_game()
         m_board[record_pos[move].x][record_pos[move].y] = I_FREE;
         move--;
         m_board[record_pos[move].x][record_pos[move].y] = I_FREE;
+        /* restore newest */
         if (move>0) newest = record_pos[move-1];
         msg = "most recent turn has been undone";
       }
@@ -236,5 +224,7 @@ int pai_start_game()
 }
 
 int pai_register_display(PAI_DISPLAY_CALLBACK callback) {
+  /* simply save the callback */
   m_dcallback = callback;
+  return 1;
 }

@@ -17,6 +17,7 @@
  *
  */
 
+/* usage: dirarr[line][direction][0 for x, 1 for y] */
 static const int dirarr[][2][2] = {
   1,0,-1,0,
   0,1,0,-1,
@@ -58,28 +59,24 @@ static const int dirarr[][2][2] = {
     (y) < 0 || (x) >= BOARD_H || \
     board[x][y] != I_BLACK)
 
+/* patterns for open 4 */
 static const char *patopen4[] = {
   "-#****#-"
 };
 
+/* patterns for dash 4 */
 static const char *patdash4[] = {
   "-**#**-", "-***#*-", "-*#***-", "x****#-", "-#****x"
 };
 
+/* patterns for open 3 */
 /* Note: patopen3[0] and patopen3[1] are exclusive */
 static const char *patopen3[] = {
   "+***#+", "+#***+", "+**#*+", "+*#**+"
 };
 
-#define ITERATE_BY_DIR(vx, vy, newpos, line, dir) \
-  for ( \
-    (vx) = (newpos)->x+dirarr[line][dir][0], \
-    (vy) = (newpos)->y+dirarr[line][dir][1]; \
-    (vx) >= 0 && (vx) < BOARD_W && (vy) >= 0 && (vy) < BOARD_H; \
-    (vx) += dirarr[line][dir][0], \
-    (vy) += dirarr[line][dir][1] \
-    )
-
+/* match a specified position on the board with a char pattern (for black only) */
+/* return value is nonzero if matched */
 static inline int char_match(board_t board, int x, int y, char pattern) {
   switch (pattern) {
     case '*':
@@ -100,12 +97,17 @@ static inline int char_match(board_t board, int x, int y, char pattern) {
   return 0;
 }
 
-/* initial start=-5 */
+/* match a line with a pattern (for black only) */
+/* initial start should be -5 */
+/* if matched, return value is nonzero and *result saves the matched position */
+/* to continue the match, set start to previuos *result */
 static inline int pat_match(board_t board, pos *newpos, int line, const char *pat, int start, int *result) {
   int i, j;
   int l = strlen(pat);
   pos p;
+  /* iterate each start index of the pattern */
   for (i=start; i+l-1<=5; i++, j++)
+    /* match each char in the pattern */
     for (j=0;
         char_match(board,
           newpos->x+dirarr[line][0][0]*(i+j),
@@ -113,16 +115,20 @@ static inline int pat_match(board_t board, pos *newpos, int line, const char *pa
           pat[j]);
         j++
         )
+      /* j>=l-1, each char is matched */
       if (j>=l-1) {
+        /* scan '#' or 'x' */
         for (j=0; j<l; j++) {
           p.x = newpos->x+dirarr[line][0][0]*(i+j);
           p.y = newpos->y+dirarr[line][0][1]*(i+j);
           switch (pat[j]) {
             case '#':
+              /* # should not be banned */
               if (checkban(board, &p))
                 return 0;
               break;
             case 'x':
+              /* x should be barrier or banned */
               if (p.x>=0 && p.x<BOARD_W &&
                   p.y>=0 && p.y<BOARD_H &&
                   board[p.x][p.y] != I_WHITE &&
@@ -137,15 +143,21 @@ static inline int pat_match(board_t board, pos *newpos, int line, const char *pa
   return 0;
 }
 
-/* count pieces in a line */
+/* count consecutive pieces in a line */
 static inline int count_line(board_t board, pos *newpos, int line) {
   int i, n;
   int x, y;
   n = 1;
   /* iterate 2 directions */
   for (i=0; i<2; i++)
-    /* iterate each intersection */
-    ITERATE_BY_DIR(x, y, newpos, line, i)
+    /* iterate each position */
+    for (
+        x = newpos->x+dirarr[line][i][0],
+        y = newpos->y+dirarr[line][i][1];
+        VALID_COORD(x, y);
+        x += dirarr[line][i][0],
+        y += dirarr[line][i][1]
+        )
       if (board[x][y] == board[newpos->x][newpos->y])
         n++;
       else
@@ -153,37 +165,47 @@ static inline int count_line(board_t board, pos *newpos, int line) {
   return n;
 }
 
+/* count open 4 in a line (for black only) */
 static inline int count_open_4(board_t board, pos *newpos, int line) {
   int i, start, count;
   count = 0;
+  /* match each pattern */
   for (i=0; i<sizeof(patopen4)/sizeof(char*); i++) {
     start = -6;
+    /* match until not matched */
     while (pat_match(board, newpos, line, patopen4[i], start+1, &start))
       count++;
   }
   return count;
 }
 
+/* count dash 4 in a line (for black only) */
 static inline int count_dash_4(board_t board, pos *newpos, int line) {
   int i, start, count;
   count = 0;
+  /* match each pattern */
   for (i=0; i<sizeof(patdash4)/sizeof(char*); i++) {
     start = -6;
+    /* match until not matched */
     while (pat_match(board, newpos, line, patdash4[i], start+1, &start))
       count++;
   }
   return count;
 }
 
+/* count open 3 in a line (for black only) */
 static inline int count_open_3(board_t board, pos *newpos, int line) {
   int i, j, result, start, count;
   pos p;
   count = 0;
+  /* match each pattern */
   for (i=0; i<sizeof(patopen3)/sizeof(char*); i++) {
     start = -6;
+    /* match until not matched */
     while (pat_match(board, newpos, line, patopen3[i], start+1, &start))
       for (j=0; j<strlen(patopen3[i]); j++)
         if (patopen3[i][j] == '#') {
+          /* if open 3 pattern is matched, place on # and check if it is open 4 */
           p.x = newpos->x+dirarr[line][0][0]*(start+j);
           p.y = newpos->y+dirarr[line][0][1]*(start+j);
           board[p.x][p.y] = I_BLACK;
@@ -199,6 +221,9 @@ static inline int count_open_3(board_t board, pos *newpos, int line) {
   return count;
 }
 
+/* judge if any player has won */
+/* newpos indicates the newest placement */
+/* return value is the role of winner or -1 if no winner */
 int judge(board_t board, pos *newpos) {
   int i, j, n;
   int x, y;
@@ -212,11 +237,16 @@ int judge(board_t board, pos *newpos) {
   return -1;
 }
 
+/* check if newpos is banned */
+/* return value is nonzero if banned */
+/* only black may encounter banned position */
+/* do not checkban for white */
 int checkban(board_t board, pos *newpos) {
   int result;
   int i, lcount;
   int open3count, alive4count;
   result = 0;
+  /* occupied position cannot be checkban'ed */
   if (board[newpos->x][newpos->y] != I_FREE) {
     return 0;
   }

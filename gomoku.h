@@ -15,13 +15,16 @@
 
 /* Chessboard definitions */
 
+/* board dimensions */
 #define BOARD_W 15
 #define BOARD_H 15
 
+/* check if coordinates are valid */
 #define VALID_COORD(x, y) ( \
     (x) >= 0 && (x) < BOARD_W && \
     (y) >= 0 && (y) < BOARD_H )
 
+/* board is a 2-dimension array */
 typedef char board_t[BOARD_W][BOARD_H];
 
 /* Position structure */

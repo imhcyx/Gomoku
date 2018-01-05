@@ -81,7 +81,24 @@
 
 typedef int (*PAI_PLAYER_CALLBACK)(int, int, int, pos*, board_t, void*);
 
-/*TODO*/
+/* Display callback */
+
+/* The callback function should be defined like this:
+ *
+ * void callback(
+ *    board_t board,
+ *    pos *newest,
+ *    char *msg,
+ *    clock_t time
+ *    );
+ *
+ * board: the board to be displayed
+ * newest: newest position (shown as a triangle)
+ * msg: error message
+ * time: processing time
+ *
+ */
+
 typedef void (*PAI_DISPLAY_CALLBACK)(board_t, pos*, char*, clock_t);
 
 /* Public functions */
@@ -109,7 +126,15 @@ int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata, 
 
 int pai_start_game();
 
-/*TODO*/
+/*
+ * pai_register_display: Register the display
+ *
+ * callback: the callback function
+ *
+ * Return value: nonzero on success, zero on failure
+ *
+ */
+
 int pai_register_display(PAI_DISPLAY_CALLBACK callback);
 
 #endif /* PAI_H */

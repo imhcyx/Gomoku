@@ -11,6 +11,7 @@
 #include "hash.h"
 #include "judge.h"
 
+/* infinity */
 #define SCORE_INF 100000000
 /* score for self */
 #define SCORE_S1 35
@@ -28,6 +29,18 @@
 #define SCORE_VO 7
 /* polluted */
 #define SCORE_PO 1
+
+/*
+ * ai_register_player: register a player as an AI
+ *
+ * Parameters:
+ *    role: the role id
+ *    aitype: the type of AI
+ *
+ * Return value:
+ *    nonzero for success, otherwise 0
+ *
+ */
 
 int ai_register_player(int role, int aitype);
 
