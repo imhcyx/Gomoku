@@ -22,8 +22,8 @@ void deflate_delta(deflate_t, int, int, int);
 
 HASHVALUE hash_board(board_t);
 HASHVALUE hash_deflate(deflate_t);
-HASHVALUE hash_board_delta(HASHVALUE, board_t, int, int, int, int);
-HASHVALUE hash_deflate_delta(HASHVALUE, deflate_t, int, int, int, int);
+HASHVALUE hash_board_apply_delta(HASHVALUE, board_t, int, int, int, int);
+HASHVALUE hash_deflate_apply_delta(HASHVALUE, deflate_t, int, int, int, int);
 
 typedef enum {
   hash_exact,

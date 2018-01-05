@@ -66,14 +66,14 @@ HASHVALUE hash_deflate(deflate_t def) {
   return value;
 }
 
-HASHVALUE hash_board_delta(HASHVALUE oldvalue, board_t board, int newx, int newy, int piece, int remove) {
+HASHVALUE hash_board_apply_delta(HASHVALUE oldvalue, board_t board, int newx, int newy, int piece, int remove) {
   int index;
   index = newx*BOARD_H+newy;
   board[newx][newy] = remove ? I_FREE : piece;
   return oldvalue ^ zobrist[index*piece];
 }
 
-HASHVALUE hash_deflate_delta(HASHVALUE oldvalue, deflate_t def, int newx, int newy, int piece, int remove) {
+HASHVALUE hash_deflate_apply_delta(HASHVALUE oldvalue, deflate_t def, int newx, int newy, int piece, int remove) {
   int index;
   char mask1, mask2;
   index = newx*BOARD_H+newy;

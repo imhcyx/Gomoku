@@ -158,7 +158,7 @@ int pai_start_game()
         msg = winner ? "white win" : "black win";
       }
 
-#if 0
+#if 0 
       extern int score_board(board_t, int);
       printf("black: %8d\n", score_board(m_board, I_BLACK));
       printf("white: %8d\n", score_board(m_board, I_WHITE));

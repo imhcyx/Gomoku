@@ -13,6 +13,23 @@
  *
  */
 
+/* TODO: comments */
+typedef struct {
+  /* black & white */
+  int score[2]; /* part of board score */
+  int scorep[2]; /* part of point score */
+  int npiece[2];
+} group_score;
+
+typedef struct {
+  group_score vertical[BOARD_W-4][BOARD_H];
+  group_score horizontal[BOARD_W][BOARD_H-4];
+  group_score backslash[BOARD_W-4][BOARD_H-4];
+  group_score slash[BOARD_W-4][BOARD_H-4];
+  int scores[2][BOARD_W][BOARD_H];
+  int totalscore[2]; /* black & white */
+} board_score;
+
 /* line directions */
 /* usage: linearr[direction][0 for x, 1 for y] */
 static const int linearr[][2] = {
@@ -32,7 +49,7 @@ static const int groupdim[][4] = {
 };
 
 /* parameters for game tree searching with alpha beta cutting */
-#define ALPHABETA_WIDTH 15
+#define ALPHABETA_WIDTH 18
 #define ALPHABETA_DEPTH 8
 
 /* score by the count of pieces */
@@ -75,6 +92,7 @@ static inline int score_by_count(int ns, int no, int neg) {
     return SCORE_VO;
 }
 
+/* legacy function (for AI 1 only) */
 /* score all groups on board */
 int score_board(board_t board, int piece) {
   int score = 0;
@@ -103,9 +121,98 @@ int score_board(board_t board, int piece) {
   return score;
 }
 
+/* score all groups on board */
+void score_board_by_struct(board_t board, board_score *bscore) {
+  group_score *gs;
+  int sb = 0, sw = 0;
+  int line;
+  int i, x0, y0, x, y, nb, nw;
+  memset(bscore, 0, sizeof(board_score));
+  /* iterate each line */
+  for (line=0; line<4; line++)
+    /* iterate each group horizontally */
+    for (x0=0; x0<groupdim[line][0]; x0++)
+      /* iterate each group vertically */
+      for (y0=0; y0<groupdim[line][1]; y0++) {
+        nb = nw = 0;
+        /* iterate each point in the group */
+        for (
+            i=0, x=x0+groupdim[line][2], y=y0+groupdim[line][3];
+            i<5; i++, x+=linearr[line][0], y+=linearr[line][1]
+            )
+          /* count pieces */
+          if (board[x][y] == I_BLACK)
+            nb++;
+          else if (board[x][y] == I_WHITE)
+            nw++;
+        switch (line) {
+          case 0: gs = &bscore->vertical[x0][y0]; break;
+          case 1: gs = &bscore->horizontal[x0][y0]; break;
+          case 2: gs = &bscore->backslash[x0][y0]; break;
+          case 3: gs = &bscore->slash[x0][y0]; break;
+        }
+        gs->npiece[0] = nb;
+        gs->npiece[1] = nw;
+        bscore->totalscore[0] += (gs->score[0] = score_by_count(nb, nw, 1));
+        bscore->totalscore[1] += (gs->score[1] = score_by_count(nw, nb, 1));
+        sb = gs->scorep[0] = score_by_count(nb, nw, 0);
+        sw = gs->scorep[1] = score_by_count(nw, nb, 0);
+        for (
+            i=0, x=x0+groupdim[line][2], y=y0+groupdim[line][3];
+            i<5; i++, x+=linearr[line][0], y+=linearr[line][1]
+            )
+        {
+          bscore->scores[0][x][y] += sb;
+          bscore->scores[1][x][y] += sw;
+        }
+      }
+}
+
+void score_struct_delta(board_score *bscore, pos *newpos, int role, int remove) {
+  group_score *gs;
+  int db, dw;
+  int x0, y0, k, x, y, i;
+  int line;
+  for (line=0; line<4; line++)
+    for (
+        x0=newpos->x-groupdim[line][2], y0=newpos->y-groupdim[line][3], k=0;
+        k<5; x0-=linearr[line][0], y0-=linearr[line][1], k++
+        )
+      if (x0>=0 && x0<groupdim[line][0] &&
+          y0>=0 && y0<groupdim[line][1])
+      {
+        switch (line) {
+          case 0: gs = &bscore->vertical[x0][y0]; break;
+          case 1: gs = &bscore->horizontal[x0][y0]; break;
+          case 2: gs = &bscore->backslash[x0][y0]; break;
+          case 3: gs = &bscore->slash[x0][y0]; break;
+        }
+        db = gs->score[0];
+        dw = gs->score[1];
+        gs->npiece[role] += remove?-1:1;
+        db = (gs->score[0] = score_by_count(gs->npiece[0], gs->npiece[1], 1)) - db;
+        dw = (gs->score[1] = score_by_count(gs->npiece[1], gs->npiece[0], 1)) - dw;
+        bscore->totalscore[0] += db;
+        bscore->totalscore[1] += dw;
+        db = gs->scorep[0];
+        dw = gs->scorep[1];
+        db = (gs->scorep[0] = score_by_count(gs->npiece[0], gs->npiece[1], 0)) - db;
+        dw = (gs->scorep[1] = score_by_count(gs->npiece[1], gs->npiece[0], 0)) - dw;
+        for (
+            i=0, x=x0+groupdim[line][2], y=y0+groupdim[line][3];
+            i<5; i++, x+=linearr[line][0], y+=linearr[line][1]
+            )
+        {
+          bscore->scores[0][x][y] += db;
+          bscore->scores[1][x][y] += dw;
+        }
+      }
+}
+
+/* legacy function (for AI 1 only) */
 /* score a point on the board */
 /* piece indicates the role */
-int score_point(board_t board, int x, int y, int piece) {
+static inline int score_point(board_t board, int x, int y, int piece) {
   int score = 0;
   int line;
   int i0, j0, k0, i, j, k;
@@ -151,6 +258,7 @@ int score_point(board_t board, int x, int y, int piece) {
   return score;
 }
 
+/* legacy function (for AI 1 only) */
 /* score all points (call score_point for each point) */
 void score_all_points(int scores[BOARD_W][BOARD_H], board_t board, int piece) {
   int i, j;
@@ -173,7 +281,7 @@ int find_max_points(int scores[BOARD_W][BOARD_H], board_t board, int role, pos *
     for (j=0; j<BOARD_H; j++) {
       score = scores[i][j];
       /* if the score is greater than the minimum in record*/
-      if (score>maxscores[num-1]) {
+      if (score>maxscores[num-1] && board[i][j] == I_FREE) {
         p.x = i;
         p.y = j;
         /* if the position is not banned, add to list */
@@ -202,13 +310,13 @@ int alphabeta(
     int alpha, /* alpha value */
     int beta, /* beta value */
     board_t board, /* current board */
+    board_score *bscore,
     pos *newpos /* newest position */
     )
 {
   int i, n, t;
   /* this is alpha node by default */
   hash_type type = hash_alpha;
-  int scores[BOARD_W][BOARD_H];
   pos maxpos[64];
   /* judge if lose */
   i = judge(board, newpos);
@@ -217,23 +325,23 @@ int alphabeta(
     return -SCORE_INF;
   /* leaf node, return score of the board */
   if (depth<=0)
-    return score_board(board, role+1);
+    return bscore->totalscore[role];
   /* look up hash table */
   /* if node already calculated, return stored value */
   if (hashtable_lookup(hash, depth, alpha, beta, &t))
     return t;
-  /* score all points on the board */
-  score_all_points(scores, board, role+1);
   /* find points with highest scores */
-  n = find_max_points(scores, board, role, maxpos, ALPHABETA_WIDTH);
+  n = find_max_points(bscore->scores[role], board, role, maxpos, ALPHABETA_WIDTH);
   /* search on these n points recursively */
   for (i=0; i<n; i++) {
+    score_struct_delta(bscore, &maxpos[i], role, 0);
     /* place new piece and calculate hash by difference */
-    hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 0);
+    hash = hash_board_apply_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 0);
     /* recursive search */
-    t = -alphabeta(hash, role^1, depth-1, -beta, -alpha, board, &maxpos[i]);
+    t = -alphabeta(hash, role^1, depth-1, -beta, -alpha, board, bscore, &maxpos[i]);
     /* remove new piece and calculate hash by difference */
-    hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 1);
+    hash = hash_board_apply_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 1);
+    score_struct_delta(bscore, &maxpos[i], role, 1);
     /* update alpha */
     if (t>alpha) {
       type = hash_exact;
@@ -261,38 +369,39 @@ int negamax(
     )
 {
   HASHVALUE hash;
+  board_score bs;
   /* initial alpha and beta values */
   int alpha = -SCORE_INF, beta = SCORE_INF;
   int i, n, t;
-  int scores[BOARD_W][BOARD_H];
   pos maxpos[64];
-  /* leaf node */
-  if (depth<=0)
-    return score_board(board, role+1);
+  int maxscore = 0;
+  score_board_by_struct(board, &bs);
   /* calculate hash value of the current board */
   hash = hash_board(board);
-  /* score all points */
-  score_all_points(scores, board, role+1);
   /* find points with the highest scores */
-  n = find_max_points(scores, board, role, maxpos, ALPHABETA_WIDTH);
+  n = find_max_points(bs.scores[role], board, role, maxpos, ALPHABETA_WIDTH);
   /* preset result to current optimal position in case of no result produced by search */
   *result = maxpos[0];
   for (i=0; i<n; i++) {
+    score_struct_delta(&bs, &maxpos[i], role, 0);
     /* place new piece and calculate hash by difference */
-    hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 0);
+    hash = hash_board_apply_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 0);
     /* call alphabeta */
-    t = -alphabeta(hash, role^1, depth-1, -beta, -alpha, board, &maxpos[i]);
+    t = -alphabeta(hash, role^1, depth-1, -beta, -alpha, board, &bs, &maxpos[i]);
     /* remove new piece and calculate hash by difference */
-    hash = hash_board_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 1);
+    hash = hash_board_apply_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 1);
+    score_struct_delta(&bs, &maxpos[i], role, 1);
 #if 1
     /* print scores for debug */
     printf("score (%d,%d): %d\n", maxpos[i].x, maxpos[i].y, t);
 #endif
     /* update alpha */
-    if (t>alpha) {
+    if (t>alpha)
       alpha = t;
+    if (t>maxscore) {
       /* new optimal position produced */
       *result = maxpos[i];
+      maxscore = t;
     }
     /* beta cutting */
     if (alpha>=beta)
