@@ -13,6 +13,9 @@
 #include <time.h>
 #include <stdint.h>
 
+/* use POSIX threads for parallel searching */
+#include <pthread.h>
+
 /* Chessboard definitions */
 
 /* board dimensions */

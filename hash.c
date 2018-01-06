@@ -22,8 +22,12 @@ typedef struct _hash_node {
 
 /* hash bin definition */
 typedef struct {
+  /* chains */
   hash_node *node[HASHBIN_PRIME]; /* subscript = hash % HASHBIN_PRIME */
-  int count[HASHBIN_PRIME]; /* performance counter */
+  /* mutex for chains */
+  pthread_mutex_t mutex[HASHBIN_PRIME];
+  /* performance counter */
+  int count[HASHBIN_PRIME]; 
 } hash_bin;
 
 /* hash bins */
@@ -99,10 +103,15 @@ HASHVALUE hash_deflate_apply_delta(HASHVALUE oldvalue, deflate_t def, int newx, 
 
 /* initialize hash table */
 void hashtable_init() {
+  int i, j;
   /* if not initialized */
   if (!m_init) {
     /* clear structures */
     memset(m_hashbin, 0, sizeof(m_hashbin));
+    /* initialize mutexes */
+    for (i=0; i<256; i++)
+      for (j=0; j<HASHBIN_PRIME; j++)
+        pthread_mutex_init(&m_hashbin[i].mutex[j], 0);
     m_init = 1;
   }
 }
@@ -128,20 +137,27 @@ void hashtable_fini() {
         free(node);
         node = next;
       }
+      /* destroy mutexes */
+      pthread_mutex_destroy(&m_hashbin[i].mutex[j]);
     }
   /* clear state */
   m_init = 0;
 }
 
 /* store value to hash table */
+/* thread-safe */
 void hashtable_store(HASHVALUE hash, int depth, hash_type type, int value) {
   int i, j;
   hash_node *node;
   /* calculate bin and chain number */
   i = hash >> (sizeof(HASHVALUE)-1)*8;
   j = hash % HASHBIN_PRIME;
-  /* TODO: handle error for malloc */
+  /* lock chain */
+  pthread_mutex_lock(&m_hashbin[i].mutex[j]);
+  /* allocate node */
   node = malloc(sizeof(hash_node));
+  /* error in malloc */
+  if (!node) return;
   /* fill stuffs */
   node->hash = hash;
   node->depth = depth;
@@ -152,18 +168,26 @@ void hashtable_store(HASHVALUE hash, int depth, hash_type type, int value) {
   m_hashbin[i].node[j] = node;
   /* update counter */
   m_hashbin[i].count[j]++;
+  /* unlock chain */
+  pthread_mutex_unlock(&m_hashbin[i].mutex[j]);
 }
 
 /* look up value in hash table */
+/* thread-safe */
 int hashtable_lookup(HASHVALUE hash, int depth, int alpha, int beta, int *pvalue) {
   int i, j;
+  int result;
   hash_node *node;
   /* calculate bin and chain number */
   i = hash >> (sizeof(HASHVALUE)-1)*8;
   j = hash % HASHBIN_PRIME;
-  /* empty chain */
-  if (!(node = m_hashbin[i].node[j]))
-    return 0;
+  /* lock chain */
+  pthread_mutex_lock(&m_hashbin[i].mutex[j]);
+  /* is empty chain */
+  if (!(node = m_hashbin[i].node[j])) {
+    result = 0;
+    goto _exit;
+  }
   /* linear search */
   while (node) {
     if (node->hash == hash &&
@@ -174,11 +198,16 @@ int hashtable_lookup(HASHVALUE hash, int depth, int alpha, int beta, int *pvalue
           node->type == hash_beta && node->value >= beta) {
         /* found */
         *pvalue = node->value;
-        return 1;
+        result = 1;
+        goto _exit;
       }
     }
     node = node->next;
   }
   /* not found */
-  return 0;
+  result = 0;
+_exit:
+  /* unlock chain */
+  pthread_mutex_unlock(&m_hashbin[i].mutex[j]);
+  return result;
 }

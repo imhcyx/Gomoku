@@ -47,9 +47,9 @@ typedef enum {
 void hashtable_init();
 /* finalize hash table */
 void hashtable_fini();
-/* store value to hash table */
+/* store value to hash table (thread-safe) */
 void hashtable_store(HASHVALUE, int, hash_type, int);
-/* look up hash table */
+/* look up hash table (thread-safe) */
 int hashtable_lookup(HASHVALUE, int, int, int, int*);
 
 /* get specified piece by deflate_t */

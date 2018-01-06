@@ -1,7 +1,7 @@
 CC = clang
 OUTFILE = gomoku
 CFLAGS = -g -O3
-LINKER_FLAGS =
+LINKER_FLAGS = -lpthread
 
 .DEFAULT_GOAL := all
 

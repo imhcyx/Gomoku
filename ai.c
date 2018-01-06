@@ -55,6 +55,24 @@ static const int groupdim[][4] = {
 #define ALPHABETA_WIDTH 18
 #define ALPHABETA_DEPTH 8
 
+/* number of parallel threads */
+#define PARALLEL_THREADS 4
+
+/* parameters for threads in negamax_parallel */
+typedef struct {
+  int *signaled;
+  pos *result;
+  int *maxscore;
+  int *alpha;
+  pthread_mutex_t *mutex;
+  int role;
+  int npos;
+  pos maxpos[ALPHABETA_WIDTH];
+  HASHVALUE hash;
+  board_t board;
+  board_score bs;
+} negamax_param;
+
 /* score by the count of pieces */
 /* if neg, negative score is given for opponent's pieces */
 static inline int score_by_count(int ns, int no, int neg) {
@@ -341,7 +359,7 @@ static int alphabeta(
   int i, n, t;
   /* this is alpha node by default */
   hash_type type = hash_alpha;
-  pos maxpos[64];
+  pos maxpos[ALPHABETA_WIDTH];
 
   /* judge if lose */
   i = judge(board, newpos);
@@ -416,7 +434,7 @@ static int negamax(
   /* initial alpha and beta values */
   int alpha = -SCORE_INF, beta = SCORE_INF;
   int i, n, t;
-  pos maxpos[64];
+  pos maxpos[ALPHABETA_WIDTH];
   int maxscore = 0;
 
   /* calculate scores */
@@ -468,6 +486,164 @@ static int negamax(
       break;
 
   }
+
+  /* return alpha value as score of node */
+  return alpha;
+
+}
+
+static void* negamax_thread_routine(void *parameter) {
+
+  negamax_param *param = parameter;
+  int i, t;
+  int beta = SCORE_INF;
+  HASHVALUE hash = param->hash;
+
+  for (i=0; i<param->npos; i++) {
+
+    /* update scores by difference */
+    score_struct_delta(&param->bs, &param->maxpos[i], param->role, 0);
+
+    /* place new piece and calculate hash by difference */
+    hash = hash_board_apply_delta(hash, param->board, param->maxpos[i].x, param->maxpos[i].y, param->role+1, 0);
+
+    /* call alphabeta */
+    t = -alphabeta(hash, param->role^1, ALPHABETA_DEPTH-1, -beta, -*param->alpha, param->board, &param->bs, &param->maxpos[i]);
+
+    /* remove new piece and calculate hash by difference */
+    hash = hash_board_apply_delta(hash, param->board, param->maxpos[i].x, param->maxpos[i].y, param->role+1, 1);
+
+    /* revert scores */
+    score_struct_delta(&param->bs, &param->maxpos[i], param->role, 1);
+
+#if 1
+    /* print scores for debug */
+    printf("score (%d,%d): %d\n", param->maxpos[i].x, param->maxpos[i].y, t);
+#endif
+
+    pthread_mutex_lock(param->mutex);
+
+    /* update alpha */
+    if (t>*param->alpha)
+      *param->alpha = t;
+
+    if (t>*param->maxscore) {
+      /* new optimal position produced */
+      *param->result = param->maxpos[i];
+      *param->maxscore = t;
+    }
+
+    pthread_mutex_unlock(param->mutex);
+
+    /* beta cutting */
+    if (*param->alpha>=beta)
+      break;
+
+  }
+
+}
+
+/* wrapper of alphabeta */
+/* find the optimal position using alphabeta */
+static int negamax_parallel(
+    int role, /* current role */
+    board_t board, /* current board */
+    pos *result /* pointer to receive the optimal position */
+    )
+{
+
+  HASHVALUE hash;
+  board_score bs;
+  /* initial alpha and beta values */
+  int alpha = -SCORE_INF, beta = SCORE_INF;
+  int i, n, t;
+  pos maxpos[ALPHABETA_WIDTH];
+  int maxscore = 0;
+  negamax_param param[PARALLEL_THREADS];
+  pthread_t tid[PARALLEL_THREADS];
+  pthread_mutex_t mutex;
+
+  /* calculate scores */
+  score_board_by_struct(board, &bs);
+
+  /* calculate hash value of the current board */
+  hash = hash_board(board);
+
+  /* find points with the highest scores */
+  n = find_max_points(bs.scores[role], board, role, maxpos, ALPHABETA_WIDTH);
+
+  /* preset result to current optimal position in case of no result produced by search */
+  *result = maxpos[0];
+
+  /* search first node to avoid unnecessary calculation */
+
+  {
+
+    /* update scores by difference */
+    score_struct_delta(&bs, &maxpos[0], role, 0);
+
+    /* place new piece and calculate hash by difference */
+    hash = hash_board_apply_delta(hash, board, maxpos[0].x, maxpos[0].y, role+1, 0);
+
+    /* call alphabeta */
+    t = -alphabeta(hash, role^1, ALPHABETA_DEPTH-1, -beta, -alpha, board, &bs, &maxpos[0]);
+
+    /* remove new piece and calculate hash by difference */
+    hash = hash_board_apply_delta(hash, board, maxpos[0].x, maxpos[0].y, role+1, 1);
+
+    /* revert scores */
+    score_struct_delta(&bs, &maxpos[0], role, 1);
+
+#if 1
+    /* print scores for debug */
+    printf("score (%d,%d): %d\n", maxpos[0].x, maxpos[0].y, t);
+#endif
+
+    /* update alpha */
+    if (t>alpha)
+      alpha = t;
+
+    if (t>maxscore) {
+      /* new optimal position produced */
+      *result = maxpos[0];
+      maxscore = t;
+    }
+
+  }
+
+  pthread_mutex_init(&mutex, 0);
+
+  /* initialize parameters */
+  for (i=0; i<PARALLEL_THREADS; i++) {
+    param[i].signaled = 0; /*TODO*/
+    param[i].result = result;
+    param[i].maxscore = &maxscore;
+    param[i].alpha = &alpha;
+    param[i].mutex = &mutex;
+    param[i].role = role;
+    param[i].npos = 0;
+    param[i].hash = hash;
+    memcpy(param[i].board, board, sizeof(board_t));
+    memcpy(&param[i].bs, &bs, sizeof(board_score));
+  }
+
+  /* assign tasks */
+  for (i=1; i<n; i++) {
+    t = i % PARALLEL_THREADS;
+    param[t].maxpos[param[t].npos++] = maxpos[i];
+  }
+
+  /* fork */
+  for (i=0; i<PARALLEL_THREADS; i++) {
+    pthread_create(&tid[i], 0, negamax_thread_routine, &param[i]);
+  }
+
+  /* join */
+  for (i=0; i<PARALLEL_THREADS; i++) {
+    pthread_join(tid[i], 0);
+  }
+
+  pthread_mutex_destroy(&mutex);
 
   /* return alpha value as score of node */
   return alpha;
@@ -565,7 +741,8 @@ static int ai_callback2(
         return ACTION_PLACE;
       default:
         /* call negamax searching function for optimal position */
-        n = negamax(role, ALPHABETA_DEPTH, board, newpos);
+        //n = negamax(role, ALPHABETA_DEPTH, board, newpos);
+        negamax_parallel(role, board, newpos);
         return ACTION_PLACE;
     }
   }
