@@ -111,6 +111,7 @@ static inline int score_by_count(int ns, int no, int neg) {
   /* no pieces */
   else
     return SCORE_VO;
+  return 0;
 }
 
 /* legacy function (for AI 1 only) */
@@ -540,6 +541,8 @@ static void* negamax_thread_routine(void *parameter) {
       break;
 
   }
+
+  return 0;
 
 }
 

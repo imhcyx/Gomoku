@@ -229,10 +229,10 @@ int judge(board_t board, pos *newpos) {
   int x, y;
   /* iterate 4 lines  */
   for (i=0; i<4; i++)
-    if (board[newpos->x][newpos->y] == I_BLACK &&
-        count_line(board, newpos, i) == 5 ||
-        board[newpos->x][newpos->y] == I_WHITE &&
-        count_line(board, newpos, i) >= 5)
+    if ((board[newpos->x][newpos->y] == I_BLACK &&
+        count_line(board, newpos, i) == 5) ||
+        (board[newpos->x][newpos->y] == I_WHITE &&
+        count_line(board, newpos, i) >= 5))
       return board[newpos->x][newpos->y] - 1;
   return -1;
 }

@@ -97,7 +97,7 @@ HASHVALUE hash_deflate_apply_delta(HASHVALUE oldvalue, deflate_t def, int newx, 
   index = newx*BOARD_H+newy;
   mask1 = ~(3<<(index%4)*2);
   mask2 = remove ? piece<<(index%4)*2 : 0;
-  def[index/4] = def[index/4]&mask1|mask2;
+  def[index/4] = (def[index/4]&mask1)|mask2;
   return oldvalue ^ zobrist[index*piece];
 }
 
@@ -194,8 +194,8 @@ int hashtable_lookup(HASHVALUE hash, int depth, int alpha, int beta, int *pvalue
         node->depth >= depth) {
       /* limit result by parameters */
       if (node->type == hash_exact ||
-          node->type == hash_alpha && node->value <= alpha ||
-          node->type == hash_beta && node->value >= beta) {
+          (node->type == hash_alpha && node->value <= alpha) ||
+          (node->type == hash_beta && node->value >= beta)) {
         /* found */
         *pvalue = node->value;
         result = 1;

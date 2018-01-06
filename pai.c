@@ -174,7 +174,7 @@ int pai_start_game()
 
       /* check if the game ends in a draw */
       if (move > BOARD_W*BOARD_H ||
-          move > CHECKFREE_THRESHOLD && isallbanned(m_board)) {
+          (move > CHECKFREE_THRESHOLD && isallbanned(m_board))) {
         winner = 2;
         msg = "end in a draw";
       }
