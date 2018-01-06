@@ -13,6 +13,9 @@
 #include <time.h>
 #include <stdint.h>
 
+/* usleep */
+#include <unistd.h>
+
 /* use POSIX threads for parallel searching */
 #include <pthread.h>
 
