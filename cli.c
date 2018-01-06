@@ -10,7 +10,7 @@
 #define ROLENAME(x) (x == ROLE_BLACK ? "black" : "white")
 
 /* display the board */
-static void cli_display(board_t board, pos *newest, char *msg, clock_t time) {
+static void cli_display(board_t board, pos *newest, char *msg, unsigned long long time) {
   int i, j;
   printf("\n");
   /* iterate each row */
@@ -85,10 +85,9 @@ static void cli_display(board_t board, pos *newest, char *msg, clock_t time) {
   /* otherwise print processing time of AI */
   if (msg)
     printf("%s\n", msg);
-  else if (time)
-    printf("processing time: %.3lfs\n", time / (double)CLOCKS_PER_SEC);
   else
     printf("\n");
+  printf("elapsed time: %.3lfs\n", time / 1000.0);
 }
 
 /* 

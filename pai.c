@@ -5,7 +5,9 @@
 
 #include "pai.h"
 #include "judge.h"
-#include "hash.h" /* for debug */
+
+/* use ftime */
+#include <sys/timeb.h>
 
 /* convert role id to piece number */
 #define ROLE2ISTATUS(x) (x == ROLE_BLACK ? I_BLACK : I_WHITE)
@@ -64,7 +66,7 @@ int pai_start_game()
   int action; /* action returned by player callback */
   pos newpos, newest;
   char *msg = 0;
-  clock_t time1, time2;
+  unsigned long long time1, time2;
 
   /* check callback pointers */
   
@@ -82,14 +84,14 @@ int pai_start_game()
   role = ROLE_BLACK;
   winner = -1;
   action = 0;
-  time1 = clock();
+  time1 = pai_time();
 
   /* run the game */
   
   while (running) {
     
     /* call display callback and calculate time */
-    time2 = clock();
+    time2 = pai_time();
     if (m_dcallback) m_dcallback(m_board, (move?&newest:0), msg, time2-time1);
     time1 = time2;
     msg = 0;
@@ -162,11 +164,6 @@ int pai_start_game()
       extern int score_board(board_t, int);
       printf("black: %8d\n", score_board(m_board, I_BLACK));
       printf("white: %8d\n", score_board(m_board, I_WHITE));
-      static uint64_t hashvalue;
-      static board_t board2;
-      hashvalue = hash_board_delta(hashvalue, board2, newpos.x, newpos.y, ROLE2ISTATUS(role), 0);
-      printf("hash_board: %016lx\n", hash_board(m_board));
-      printf("hash_board_delta: %016lx\n", hashvalue); 
 #endif
 
       /* increase move count */
@@ -227,4 +224,11 @@ int pai_register_display(PAI_DISPLAY_CALLBACK callback) {
   /* simply save the callback */
   m_dcallback = callback;
   return 1;
+}
+
+/* get time counter in milliseconds */
+unsigned long long pai_time() {
+  struct timeb t;
+  ftime(&t);
+  return 1000 * t.time + t.millitm;
 }

@@ -5,6 +5,9 @@
 
 #include "ai.h"
 
+/* debug flag */
+#define AI_DEBUG 1
+
 /*
  * Scoring
  *
@@ -467,9 +470,9 @@ static int negamax(
     /* revert scores */
     score_struct_delta(&bs, &maxpos[i], role, 1);
 
-#if 1
+#if AI_DEBUG 
     /* print scores for debug */
-    printf("score (%d,%d): %d\n", maxpos[i].x, maxpos[i].y, t);
+    fprintf(stderr, "score (%d,%d): %d\n", maxpos[i].x, maxpos[i].y, t);
 #endif
 
     /* update alpha */
@@ -517,9 +520,9 @@ static void* negamax_thread_routine(void *parameter) {
     /* revert scores */
     score_struct_delta(&param->bs, &param->maxpos[i], param->role, 1);
 
-#if 1
+#if AI_DEBUG
     /* print scores for debug */
-    printf("score (%d,%d): %d\n", param->maxpos[i].x, param->maxpos[i].y, t);
+    fprintf(stderr, "score (%d,%d): %d\n", param->maxpos[i].x, param->maxpos[i].y, t);
 #endif
 
     pthread_mutex_lock(param->mutex);
@@ -597,9 +600,9 @@ static int negamax_parallel(
     /* revert scores */
     score_struct_delta(&bs, &maxpos[0], role, 1);
 
-#if 1
+#if AI_DEBUG
     /* print scores for debug */
-    printf("score (%d,%d): %d\n", maxpos[0].x, maxpos[0].y, t);
+    fprintf(stderr, "score (%d,%d): %d\n", maxpos[0].x, maxpos[0].y, t);
 #endif
 
     /* update alpha */

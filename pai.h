@@ -89,7 +89,7 @@ typedef int (*PAI_PLAYER_CALLBACK)(int, int, int, pos*, board_t, void*);
  *    board_t board,
  *    pos *newest,
  *    char *msg,
- *    clock_t time
+ *    unsigned long long time
  *    );
  *
  * board: the board to be displayed
@@ -99,7 +99,7 @@ typedef int (*PAI_PLAYER_CALLBACK)(int, int, int, pos*, board_t, void*);
  *
  */
 
-typedef void (*PAI_DISPLAY_CALLBACK)(board_t, pos*, char*, clock_t);
+typedef void (*PAI_DISPLAY_CALLBACK)(board_t, pos*, char*, unsigned long long);
 
 /* Public functions */
 
@@ -136,5 +136,14 @@ int pai_start_game();
  */
 
 int pai_register_display(PAI_DISPLAY_CALLBACK callback);
+
+/*
+ * pai_time: Get time counter in milliseconds
+ *
+ * Return value: the time counter
+ *
+ */
+
+unsigned long long pai_time();
 
 #endif /* PAI_H */
