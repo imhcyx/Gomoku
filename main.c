@@ -17,8 +17,8 @@ int main(int argc, const char *argv[]) {
         "Options:\n"
         "    -b<role>\n"
         "    -w<role>\n"
-        "        Specify roles for black(b) and white(w) (p = player, c<aitype> = computer).\n"
-        "        aitype can be 1 or 2\n",
+        "        Specify roles for black(b) and white(w) \n"
+        "        role can be p (player), c1 (AI 1) or c2 (AI 2)\n",
         argv[0]);
     return 0;
   }

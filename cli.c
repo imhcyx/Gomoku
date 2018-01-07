@@ -12,6 +12,9 @@
 /* display the board */
 static void cli_display(board_t board, pos *newest, char *msg, unsigned long long time) {
   int i, j;
+#if !GOMOKU_DEBUG
+  system("clear");
+#endif
   printf("\n");
   /* iterate each row */
   for (i=0; i<BOARD_H; i++) {

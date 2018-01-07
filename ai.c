@@ -9,7 +9,7 @@
 #include "pai.h"
 
 /* debug flag */
-#define AI_DEBUG 1
+#define AI_DEBUG GOMOKU_DEBUG
 
 /*
  * Scoring
@@ -71,7 +71,7 @@ static const int groupdim[][4] = {
 typedef struct {
   /* inter-thread shared variables */
   /* when *signaled is nonzero, stop searching */
-  int *signaled; /* no need to sync access */
+  int *signaled; /* read only */
   pos *result; /* synced */
   int *maxscore; /* synced */
   int *alpha; /* synced */
@@ -548,6 +548,7 @@ static void* negamax_thread_routine(void *parameter) {
     fprintf(stderr, "score (%d,%d): %d\n", param->maxpos[i].x, param->maxpos[i].y, t);
 #endif
 
+    /* synchronize access to shared variables */
     pthread_mutex_lock(param->mutex);
 
     /* update alpha */
@@ -560,6 +561,7 @@ static void* negamax_thread_routine(void *parameter) {
       *param->maxscore = t;
     }
 
+    /* finish synchronization */
     pthread_mutex_unlock(param->mutex);
 
     /* beta cutting */
@@ -774,7 +776,6 @@ static int ai_callback2(
         return ACTION_PLACE;
       default:
         /* call negamax searching function for optimal position */
-        //n = negamax(role, ALPHABETA_DEPTH, board, newpos);
         negamax_parallel(role, ALPHABETA_DEPTH, board, newpos);
         return ACTION_PLACE;
     }

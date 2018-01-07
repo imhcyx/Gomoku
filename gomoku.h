@@ -6,6 +6,8 @@
 #ifndef GOMOKU_H
 #define GOMOKU_H
 
+#define GOMOKU_DEBUG 0
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
