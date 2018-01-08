@@ -76,6 +76,7 @@ typedef struct {
   int *alpha; /* synced */
   pthread_mutex_t *mutex; /* read only */
   /* private variables */
+  int move;
   int depth;
   int width;
   int role;
@@ -366,6 +367,7 @@ static int find_max_points(int scores[BOARD_W][BOARD_H], board_t board, int role
 /* game tree searching with alpha beta cutting */
 static int alphabeta(
     HASHVALUE hash, /* hash value of current board */
+    int move, /* current move count */
     int role, /* current role */
     int depth, /* max recursion depth */
     int width, /* max search width */
@@ -395,7 +397,7 @@ static int alphabeta(
 
   /* look up hash table */
   /* if node already calculated, return stored value */
-  if (hashtable_lookup(hash, depth, alpha, beta, &t))
+  if (hashtable_lookup(hash, move, depth, alpha, beta, &t))
     return t;
 
   /* find points with highest scores */
@@ -410,8 +412,22 @@ static int alphabeta(
     /* place new piece and calculate hash by difference */
     hash = hash_board_apply_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 0);
 
-    /* recursive search */
-    t = -alphabeta(hash, role^1, depth-1, width, -beta, -alpha, board, bscore, &maxpos[i], signaled);
+    do {
+
+      /* PVS search */
+      if (i>1 && alpha+1<beta) {
+        /* probe with beta = alpha+1 */
+        t = -alphabeta(hash, move+1, role^1, depth-1, width, -alpha-1, -alpha, board, bscore, &maxpos[i], signaled);
+        if (t<=alpha || t>=beta) {
+          /* no need to search further */
+          break;
+        }
+      }
+    
+      /* recursive search */
+      t = -alphabeta(hash, move+1, role^1, depth-1, width, -beta, -alpha, board, bscore, &maxpos[i], signaled);
+
+    } while (0);
 
     /* remove new piece and calculate hash by difference */
     hash = hash_board_apply_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 1);
@@ -438,7 +454,7 @@ static int alphabeta(
   }
 
   /* store value to hash table */
-  hashtable_store(hash, depth, type, alpha);
+  hashtable_store(hash, move, depth, type, alpha);
 
   /* return alpha value as score of node */
   return alpha;
@@ -449,6 +465,7 @@ static int alphabeta(
 /* wrapper of alphabeta */
 /* find the optimal position using alphabeta */
 static int negamax(
+    int move, /* current move count */
     int role, /* current role */
     int depth, /* max recursion depth */
     int width, /* max search width */
@@ -486,7 +503,7 @@ static int negamax(
     hash = hash_board_apply_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 0);
 
     /* call alphabeta */
-    t = -alphabeta(hash, role^1, depth-1, width, -beta, -alpha, board, &bs, &maxpos[i], 0);
+    t = -alphabeta(hash, move+1, role^1, depth-1, width, -beta, -alpha, board, &bs, &maxpos[i], 0);
 
     /* remove new piece and calculate hash by difference */
     hash = hash_board_apply_delta(hash, board, maxpos[i].x, maxpos[i].y, role+1, 1);
@@ -537,7 +554,7 @@ static void* negamax_thread_routine(void *parameter) {
     hash = hash_board_apply_delta(hash, param->board, param->maxpos[i].x, param->maxpos[i].y, param->role+1, 0);
 
     /* call alphabeta */
-    t = -alphabeta(hash, param->role^1, param->depth-1, param->width, -beta, -*param->alpha, param->board, &param->bs, &param->maxpos[i], param->signaled);
+    t = -alphabeta(hash, param->move+1, param->role^1, param->depth-1, param->width, -beta, -*param->alpha, param->board, &param->bs, &param->maxpos[i], param->signaled);
 
     /* remove new piece and calculate hash by difference */
     hash = hash_board_apply_delta(hash, param->board, param->maxpos[i].x, param->maxpos[i].y, param->role+1, 1);
@@ -589,6 +606,7 @@ static void* signal_thread_routine(void *parameter) {
 /* wrapper of alphabeta */
 /* find the optimal position using alphabeta (multi-threaded) */
 static int negamax_parallel(
+    int move, /* current move count */
     int role, /* current role */
     int depth, /* search depth */
     int width, /* search width */
@@ -638,6 +656,7 @@ static int negamax_parallel(
     param[i].result = result;
     param[i].alpha = &alpha;
     param[i].mutex = &mutex;
+    param[i].move = move;
     param[i].depth = depth;
     param[i].width = width;
     param[i].role = role;
@@ -748,14 +767,28 @@ static int ai_callback2(
   /* okay to place */
   if (action == ACTION_NONE || action == ACTION_PLACE) {
     switch (move) {
-      /* first move */
+      /* first and second move */
       case 0:
-        /* place on the center */
+      case 1:
+        /* attempt to place on the center */
         newpos->x = (BOARD_W-1)/2;
         newpos->y = (BOARD_H-1)/2;
+        /* center occupied, place on diagonal neighbor */
+        if (board[newpos->x][newpos->y] != I_FREE) {
+          n = 0;
+          for (i=0; i<4; i++) {
+            maxpos[n].x = (BOARD_W-1)/2+linearr[2+i/2][0]*(i%2?1:-1);
+            maxpos[n].y = (BOARD_H-1)/2+linearr[2+i/2][1]*(i%2?1:-1);
+            if (board[maxpos[n].x][maxpos[n].y] == I_FREE)
+              n++;
+          }
+          /* randomly choose one */
+          i = rand() % n;
+          *newpos = maxpos[i];
+        }
         return ACTION_PLACE;
-      /* second move */
-      case 1: case 2: case 3:
+      case 2:
+      case 3:
         /* score all points and pick one with highest score */
         score_all_points(scores, board, piece);
         num = find_max_points(scores, board, role, maxpos, 40);
@@ -766,7 +799,7 @@ static int ai_callback2(
         return ACTION_PLACE;
       default:
         /* call negamax searching function for optimal position */
-        negamax_parallel(role, ALPHABETA_DEPTH, ALPHABETA_WIDTH, board, newpos);
+        negamax_parallel(move, role, ALPHABETA_DEPTH, ALPHABETA_WIDTH, board, newpos);
         return ACTION_PLACE;
     }
   }

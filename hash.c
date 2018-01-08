@@ -12,6 +12,7 @@
 typedef struct _hash_node {
   struct _hash_node *next;
   HASHVALUE hash;
+  int move;
   int depth;
   hash_type type;
   int value;
@@ -146,7 +147,7 @@ void hashtable_fini() {
 
 /* store value to hash table */
 /* thread-safe */
-void hashtable_store(HASHVALUE hash, int depth, hash_type type, int value) {
+void hashtable_store(HASHVALUE hash, int move, int depth, hash_type type, int value) {
   int i, j;
   hash_node *node;
   /* calculate bin and chain number */
@@ -160,6 +161,7 @@ void hashtable_store(HASHVALUE hash, int depth, hash_type type, int value) {
   if (!node) return;
   /* fill stuffs */
   node->hash = hash;
+  node->move = move;
   node->depth = depth;
   node->type = type;
   node->value = value;
@@ -174,7 +176,7 @@ void hashtable_store(HASHVALUE hash, int depth, hash_type type, int value) {
 
 /* look up value in hash table */
 /* thread-safe */
-int hashtable_lookup(HASHVALUE hash, int depth, int alpha, int beta, int *pvalue) {
+int hashtable_lookup(HASHVALUE hash, int move, int depth, int alpha, int beta, int *pvalue) {
   int i, j;
   int result;
   hash_node *node;
@@ -191,6 +193,7 @@ int hashtable_lookup(HASHVALUE hash, int depth, int alpha, int beta, int *pvalue
   /* linear search */
   while (node) {
     if (node->hash == hash &&
+        node->move == move &&
         node->depth >= depth) {
       /* limit result by parameters */
       if (node->type == hash_exact ||
