@@ -59,7 +59,10 @@ static const int groupdim[][4] = {
 
 /* parameters for game tree searching with alpha beta cutting */
 #define ALPHABETA_WIDTH 20
-#define ALPHABETA_DEPTH 8
+#define ALPHABETA_DEPTH 6
+
+/* max search depth */
+#define MAX_DEPTH 20
 
 /* length of maxpos buffer */
 #define MAXPOS_LEN 64
@@ -92,6 +95,7 @@ typedef struct {
 
 /* parameters for signal thread */
 typedef struct {
+  unsigned long long inittime; /* read only */
   int *signaled; /* set by signal thread */
   int *exit; /* set by main thread */
 } signal_param;
@@ -472,6 +476,11 @@ static void* negamax_thread_routine(void *parameter) {
   int beta = SCORE_INF;
   HASHVALUE hash = param->hash;
 
+#if AI_DEBUG
+  /* print depth for debug */
+  fprintf(stderr, "depth: %d\n", param->depth);
+#endif
+
   for (i=0; i<param->npos; i++) {
 
     /* update scores by difference */
@@ -533,7 +542,7 @@ static void* negamax_thread_routine(void *parameter) {
 /* timing thread */
 static void* signal_thread_routine(void *parameter) {
   signal_param *param = parameter;
-  unsigned long long inittime = pai_time();
+  unsigned long long inittime = param->inittime;
   while (pai_time() - inittime < MAX_TIME) {
     /* search already finished, stop timing */
     if (*param->exit) return 0;
@@ -569,9 +578,12 @@ static int negamax_parallel(
   int exit = 0;
   signal_param sparam;
   pthread_t stid;
-  int loopcount = 6;
+  int newalpha = -SCORE_INF;
+  pos newpos;
+  unsigned long long inittime = pai_time();
 
   /* set up signal thread */
+  sparam.inittime = inittime;
   sparam.signaled = &signaled;
   sparam.exit = &exit;
   pthread_create(&stid, 0, signal_thread_routine, &sparam);
@@ -591,36 +603,55 @@ static int negamax_parallel(
   /* initialize mutex */
   pthread_mutex_init(&mutex, 0);
 
-  /* initialize parameters */
-  for (i=0; i<PARALLEL_THREADS; i++) {
-    param[i].signaled = &signaled;
-    param[i].result = result;
-    param[i].alpha = &alpha;
-    param[i].mutex = &mutex;
-    param[i].move = move;
-    param[i].depth = depth;
-    param[i].width = width;
-    param[i].role = role;
-    param[i].npos = 0;
-    param[i].hash = hash;
-    memcpy(param[i].board, board, sizeof(board_t));
-    memcpy(&param[i].bs, &bs, sizeof(board_score));
-  }
+  /* search until time out or max loop count exceeded */
+  while (!signaled && depth<=MAX_DEPTH) {
 
-  /* assign tasks */
-  for (i=0; i<n; i++) {
-    t = i % PARALLEL_THREADS;
-    param[t].maxpos[param[t].npos++] = maxpos[i];
-  }
+    /* initialize parameters */
+    for (i=0; i<PARALLEL_THREADS; i++) {
+      param[i].signaled = &signaled;
+      param[i].result = &newpos;
+      param[i].alpha = &newalpha;
+      param[i].mutex = &mutex;
+      param[i].move = move;
+      param[i].depth = depth;
+      param[i].width = width;
+      param[i].role = role;
+      param[i].npos = 0;
+      param[i].hash = hash;
+      memcpy(param[i].board, board, sizeof(board_t));
+      memcpy(&param[i].bs, &bs, sizeof(board_score));
+    }
 
-  /* fork */
-  for (i=0; i<PARALLEL_THREADS; i++) {
-    pthread_create(&tid[i], 0, negamax_thread_routine, &param[i]);
-  }
+    /* assign tasks */
+    for (i=0; i<n; i++) {
+      t = i % PARALLEL_THREADS;
+      param[t].maxpos[param[t].npos++] = maxpos[i];
+    }
 
-  /* join */
-  for (i=0; i<PARALLEL_THREADS; i++) {
-    pthread_join(tid[i], 0);
+    /* fork */
+    for (i=0; i<PARALLEL_THREADS; i++) {
+      pthread_create(&tid[i], 0, negamax_thread_routine, &param[i]);
+    }
+
+    /* join */
+    for (i=0; i<PARALLEL_THREADS; i++) {
+      pthread_join(tid[i], 0);
+    }
+
+    /* if search is completed and new high score produced */
+    if (!signaled && newalpha>alpha) {
+      /* update value and position */
+      alpha = newalpha;
+      *result = newpos;
+    }
+
+    /* increase depth */
+    depth += 2;
+
+    /* continue search only when 1/10 of max time is remaining */
+    if (pai_time()-inittime>MAX_TIME/10)
+      break;
+
   }
 
   /* destroy mutex */
@@ -728,8 +759,8 @@ static int ai_callback2(
           *newpos = maxpos[i];
         }
         return ACTION_PLACE;
-      case 2:
-      case 3:
+      //case 2:
+      //case 3:
         /* score all points and pick one with highest score */
         score_all_points(scores, board, piece);
         num = find_max_points(scores, board, role, maxpos, 40);
