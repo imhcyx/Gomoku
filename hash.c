@@ -19,7 +19,7 @@ typedef struct _hash_node {
 } hash_node;
 
 /* chains in a hash bin (prime is preferred) */
-#define HASHBIN_PRIME 97
+#define HASHBIN_PRIME 65537
 
 /* hash bin definition */
 typedef struct {
