@@ -59,7 +59,7 @@ static const int groupdim[][4] = {
 
 /* parameters for game tree searching with alpha beta cutting */
 #define ALPHABETA_WIDTH 20
-#define ALPHABETA_DEPTH 6
+#define ALPHABETA_DEPTH 8
 
 /* max search depth */
 #define MAX_DEPTH 20

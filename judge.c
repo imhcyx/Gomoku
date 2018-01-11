@@ -143,8 +143,8 @@ static inline int pat_match(board_t board, pos *newpos, int line, const char *pa
   return 0;
 }
 
-/* count consecutive pieces in a line */
-static inline int count_line(board_t board, pos *newpos, int line) {
+/* count pieces in a line */
+static inline int count_line(board_t board, pos *newpos, int line, int allowspace) {
   int i, n;
   int x, y;
   n = 1;
@@ -160,6 +160,8 @@ static inline int count_line(board_t board, pos *newpos, int line) {
         )
       if (board[x][y] == board[newpos->x][newpos->y])
         n++;
+      else if (allowspace && board[x][y] == I_FREE)
+        continue;
       else
         break;
   return n;
@@ -230,9 +232,9 @@ int judge(board_t board, pos *newpos) {
   /* iterate 4 lines  */
   for (i=0; i<4; i++)
     if ((board[newpos->x][newpos->y] == I_BLACK &&
-        count_line(board, newpos, i) == 5) ||
+        count_line(board, newpos, i, 0) == 5) ||
         (board[newpos->x][newpos->y] == I_WHITE &&
-        count_line(board, newpos, i) >= 5))
+        count_line(board, newpos, i, 0) >= 5))
       return board[newpos->x][newpos->y] - 1;
   return -1;
 }
@@ -255,7 +257,7 @@ int checkban(board_t board, pos *newpos) {
   open3count = 0;
   alive4count = 0;
   for (i=0; i<4; i++) {
-    lcount = count_line(board, newpos, i);
+    lcount = count_line(board, newpos, i, 0);
     /* 5 reached, ban is no longer valid */
     if (lcount == 5) {
       result = 0;
@@ -266,10 +268,14 @@ int checkban(board_t board, pos *newpos) {
       result = 1;
       goto _exit;
     }
-    /* count open 3 */
-    open3count += count_open_3(board, newpos, i);
-    /* count alive 4 */
-    alive4count += count_open_4(board, newpos, i) + count_dash_4(board, newpos, i);
+    /* count patterns only when at least 3 pieces exists (spaces allowed) */
+    /* this improves efficiency */
+    if (count_line(board, newpos, i, 1) >= 3) {
+      /* count open 3 */
+      open3count += count_open_3(board, newpos, i);
+      /* count alive 4 */
+      alive4count += count_open_4(board, newpos, i) + count_dash_4(board, newpos, i);
+    }
   }
   /* check 3-3 & 4-4 */
   if (open3count >= 2 || alive4count >= 2) {
