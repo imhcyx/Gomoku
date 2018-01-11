@@ -88,6 +88,7 @@ typedef struct {
   int role;
   int npos;
   pos maxpos[MAXPOS_LEN];
+  int *scores[MAXPOS_LEN]; /* used to return position scores */
   HASHVALUE hash;
   board_t board;
   board_score bs;
@@ -441,6 +442,10 @@ static int alphabeta(
 
     /* revert scores */
     score_struct_delta(bscore, &maxpos[i], role, 1);
+    
+    /* time out, stop searching */
+    if (signaled && *signaled)
+      return 0;
 
     /* update alpha */
     if (t>alpha) {
@@ -453,10 +458,6 @@ static int alphabeta(
       type = hash_beta;
       break;
     }
-
-    /* time out, stop searching */
-    if (signaled && *signaled)
-      return alpha;
 
   }
 
@@ -511,6 +512,15 @@ static void* negamax_thread_routine(void *parameter) {
 
     /* revert scores */
     score_struct_delta(&param->bs, &param->maxpos[i], param->role, 1);
+
+    /* time out, stop searching */
+    if (param->signaled && *param->signaled) {
+      *param->scores[i] = -SCORE_INF;
+      break;
+    }
+
+    /* save score */
+    *param->scores[i] = t;
 
 #if AI_DEBUG
     /* print scores for debug */
@@ -569,8 +579,12 @@ static int negamax_parallel(
   board_score bs;
   /* initial alpha and beta values */
   int alpha = -SCORE_INF, beta = SCORE_INF;
-  int i, n, t;
+  int i, j, k;
+  int n, t;
   pos maxpos[MAXPOS_LEN];
+  int scores[MAXPOS_LEN];
+  pos tmppos;
+  int tmpscore;
   negamax_param param[PARALLEL_THREADS];
   pthread_t tid[PARALLEL_THREADS];
   pthread_mutex_t mutex;
@@ -578,8 +592,6 @@ static int negamax_parallel(
   int exit = 0;
   signal_param sparam;
   pthread_t stid;
-  int newalpha = -SCORE_INF;
-  pos newpos;
   unsigned long long inittime = pai_time();
 
   /* set up signal thread */
@@ -603,14 +615,14 @@ static int negamax_parallel(
   /* initialize mutex */
   pthread_mutex_init(&mutex, 0);
 
-  /* search until time out or max loop count exceeded */
-  while (!signaled && depth<=MAX_DEPTH) {
+  /* search until time out or max loop count exceeded or width zeroed */
+  while (!signaled && depth<=MAX_DEPTH && width>0) {
 
     /* initialize parameters */
     for (i=0; i<PARALLEL_THREADS; i++) {
       param[i].signaled = &signaled;
-      param[i].result = &newpos;
-      param[i].alpha = &newalpha;
+      param[i].result = result;
+      param[i].alpha = &alpha;
       param[i].mutex = &mutex;
       param[i].move = move;
       param[i].depth = depth;
@@ -625,7 +637,9 @@ static int negamax_parallel(
     /* assign tasks */
     for (i=0; i<n; i++) {
       t = i % PARALLEL_THREADS;
-      param[t].maxpos[param[t].npos++] = maxpos[i];
+      param[t].maxpos[param[t].npos] = maxpos[i];
+      param[t].scores[param[t].npos] = &scores[i];
+      param[t].npos++;
     }
 
     /* fork */
@@ -638,19 +652,27 @@ static int negamax_parallel(
       pthread_join(tid[i], 0);
     }
 
-    /* if search is completed and new high score produced */
-    if (!signaled && newalpha>alpha) {
-      /* update value and position */
-      alpha = newalpha;
-      *result = newpos;
+    /* sort points with score descending */
+    for (j=1; j<n; j++) {
+      if (scores[j]>scores[j-1]) {
+        tmpscore = scores[j];
+        tmppos = maxpos[j];
+        for (k=j; k>0&&tmpscore>scores[k-1]; k--) {
+          scores[k] = scores[k-1];
+          maxpos[k] = maxpos[k-1];
+        }
+        scores[k] = tmpscore;
+        maxpos[k] = tmppos;
+      }
     }
 
-    /* increase depth */
-    depth += 2;
-
-    /* continue search only when 1/10 of max time is remaining */
-    if (pai_time()-inittime>MAX_TIME/10)
+    /* continue search only when 1/5 of max time is remaining */
+    if (pai_time()-inittime>MAX_TIME/5)
       break;
+ 
+    /* increase depth & decrease num of points to be searched */
+    depth += 2;
+    n -= 3;
 
   }
 
@@ -684,6 +706,10 @@ static int ai_callback1(
   int piece = role+1;
   /* okay to place? */
   if (action == ACTION_NONE || action == ACTION_PLACE) {
+#if AI_DEBUG
+    /* when debug, delay some time */
+    usleep(3000000);
+#endif
     switch (move) {
       /* first and second move */
       case 0:
@@ -758,16 +784,6 @@ static int ai_callback2(
           i = rand() % n;
           *newpos = maxpos[i];
         }
-        return ACTION_PLACE;
-      //case 2:
-      //case 3:
-        /* score all points and pick one with highest score */
-        score_all_points(scores, board, piece);
-        num = find_max_points(scores, board, role, maxpos, 40);
-        for (n=0; n<num && scores[maxpos[0].x][maxpos[0].y]==scores[maxpos[n].x][maxpos[n].y]; n++);
-        /* choose randomly */
-        i = rand() % n;
-        *newpos = maxpos[i];
         return ACTION_PLACE;
       default:
         /* call negamax searching function for optimal position */
