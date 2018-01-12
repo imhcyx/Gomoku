@@ -45,6 +45,7 @@ static int isallbanned(board_t board) {
   return 1;
 }
 
+/* prototype in pai.h */
 int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata, int autoexit)
 {
   /* check role id */
@@ -56,6 +57,7 @@ int pai_register_player(int role, PAI_PLAYER_CALLBACK callback, void *userdata, 
   return 1;
 }
 
+/* prototype in pai.h */
 int pai_start_game()
 {
   
@@ -227,6 +229,7 @@ int pai_register_display(PAI_DISPLAY_CALLBACK callback) {
 }
 
 /* get time counter in milliseconds */
+/* prototype in pai.h */
 unsigned long long pai_time() {
   struct timeb t;
   ftime(&t);

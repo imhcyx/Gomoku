@@ -10,11 +10,17 @@
 
 /* hash table node definition */
 typedef struct _hash_node {
+  /* next node in this chain */
   struct _hash_node *next;
+  /* hash value */
   HASHVALUE hash;
+  /* current move count */
   int move;
+  /* current depth */
   int depth;
+  /* node type */
   hash_type type;
+  /* node value */
   int value;
 } hash_node;
 
@@ -37,6 +43,7 @@ static hash_bin m_hashbin[256]; /* subscript = high byte of hash */
 static int m_init = 0;
 
 /* hash by board_t */
+/* prototype in hash.h */
 HASHVALUE hash_board(board_t board) {
   int i, j, piece;
   int index;
@@ -54,6 +61,7 @@ HASHVALUE hash_board(board_t board) {
 }
 
 /* apply delta and hash by board_t */
+/* prototype in hash.h */
 HASHVALUE hash_board_apply_delta(HASHVALUE oldvalue, board_t board, int newx, int newy, int piece, int remove) {
   int index;
   index = newx*BOARD_H+newy;
@@ -62,6 +70,7 @@ HASHVALUE hash_board_apply_delta(HASHVALUE oldvalue, board_t board, int newx, in
 }
 
 /* initialize hash table */
+/* prototype in hash.h */
 void hashtable_init() {
   int i, j;
   /* if not initialized */
@@ -77,6 +86,7 @@ void hashtable_init() {
 }
 
 /* finalize hash table */
+/* prototype in hash.h */
 void hashtable_fini() {
   int i, j;
   hash_node *node, *next;
@@ -105,6 +115,7 @@ void hashtable_fini() {
 }
 
 /* store value to hash table */
+/* prototype in hash.h */
 /* thread-safe */
 void hashtable_store(HASHVALUE hash, int move, int depth, hash_type type, int value) {
   int i, j;
@@ -116,7 +127,7 @@ void hashtable_store(HASHVALUE hash, int move, int depth, hash_type type, int va
   pthread_mutex_lock(&m_hashbin[i].mutex[j]);
   /* allocate node */
   node = malloc(sizeof(hash_node));
-  /* error in malloc */
+  /* exit on error in malloc */
   if (!node) return;
   /* fill stuffs */
   node->hash = hash;
@@ -134,6 +145,7 @@ void hashtable_store(HASHVALUE hash, int move, int depth, hash_type type, int va
 }
 
 /* look up value in hash table */
+/* prototype in hash.h */
 /* thread-safe */
 int hashtable_lookup(HASHVALUE hash, int move, int depth, int alpha, int beta, int *pvalue) {
   int i, j;

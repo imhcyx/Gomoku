@@ -9,8 +9,10 @@
 
 int main(int argc, const char *argv[]) {
   int i;
+  /* initialize random number generator */
   srand(time(0));
   if (argc == 1) {
+    /* show help text */
     printf(
         "Usage: %s <command> [options]\n"
         "Commands: play\n"
@@ -22,12 +24,14 @@ int main(int argc, const char *argv[]) {
         argv[0]);
     return 0;
   }
+  /* parse command */
   if (!strcmp(argv[1], "play"))
     cli_init();
   else {
     fprintf(stderr, "Invalid command: %s\n", argv[1]);
     return 1;
   }
+  /* parse options */
   for (i=2; i<argc; i++)
     if (!strcmp(argv[i], "-bp"))
       cli_register_player(ROLE_BLACK);
@@ -41,5 +45,6 @@ int main(int argc, const char *argv[]) {
       fprintf(stderr, "Invalid option: %s\n", argv[i]);
       return 1;
     }
+  /* run game */
   return pai_start_game()<0;
 }

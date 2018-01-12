@@ -10,6 +10,7 @@
 #define ROLENAME(x) (x == ROLE_BLACK ? "black" : "white")
 
 /* display the board */
+/* see pai.h for specification */
 static void cli_display(board_t board, pos *newest, char *msg, unsigned long long time) {
   int i, j;
 #if !GOMOKU_DEBUG
@@ -146,6 +147,7 @@ static int cli_parse_coordinate(char *str, pos *p) {
 }
 
 /* callback for PAI interface */
+/* see pai.h for specification */
 static int cli_callback(
     int role,
     int action,
@@ -223,12 +225,14 @@ static int cli_callback(
 
 }
 
+/* prototype in cli.h */
 int cli_init() {
   /* register display callback */
   pai_register_display(cli_display);
   return 1;
 }
 
+/* prototype in cli.h */
 int cli_register_player(int role) {
   /* register role to use CLI */
   return pai_register_player(role, cli_callback, 0, 0);

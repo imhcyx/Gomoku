@@ -29,6 +29,7 @@ typedef struct {
 
 /* group status and scores of the board */
 typedef struct {
+  /* scores of groups in 4 directions */
   group_score vertical[BOARD_W-4][BOARD_H];
   group_score horizontal[BOARD_W][BOARD_H-4];
   group_score backslash[BOARD_W-4][BOARD_H-4];
@@ -77,31 +78,33 @@ static const int groupdim[][4] = {
 typedef struct {
   /* inter-thread shared variables */
   /* when *signaled is nonzero, stop searching */
-  int *signaled; /* read only */
-  pos *result; /* synced */
-  int *alpha; /* synced */
-  pthread_mutex_t *mutex; /* read only */
+  int *signaled; /* *signal indicates timeout, read only */
+  pos *result; /* *result stores point with max score, synced */
+  int *alpha; /* *alpha stores alpha value of root node, synced */
+  pthread_mutex_t *mutex; /* mutex for sync, read only */
   /* private variables */
-  int move;
-  int depth;
-  int width;
-  int role;
-  int npos;
-  pos maxpos[MAXPOS_LEN];
+  int move; /* current move count */
+  int depth; /* search depth */
+  int width; /* search width */
+  int role; /* current role id */
+  int npos; /* length of maxpos */
+  pos maxpos[MAXPOS_LEN]; /* points to be searched */
   int *scores[MAXPOS_LEN]; /* used to return position scores */
-  HASHVALUE hash;
-  board_t board;
-  board_score bs;
+  HASHVALUE hash; /* current hash value */
+  board_t board; /* current board */
+  board_score bs; /* current board scores */
 } negamax_param;
 
 /* parameters for signal thread */
 typedef struct {
-  unsigned long long inittime; /* read only */
-  int *signaled; /* set by signal thread */
-  int *exit; /* set by main thread */
+  unsigned long long inittime; /* initial time, read only */
+  int *signaled; /* timeout flag, set by signal thread */
+  int *exit; /* exit flag, set by main thread */
 } signal_param;
 
 /* score by the count of pieces */
+/* ns: num of pieces of my side */
+/* no: num of pieces of opponent's side */
 /* if neg, negative score is given for opponent's pieces */
 static inline int score_by_count(int ns, int no, int neg) {
   /* pieces of both sides exist */
@@ -143,11 +146,13 @@ static inline int score_by_count(int ns, int no, int neg) {
 }
 
 /* score all groups on board using board_score struct */
+/* board: current board */
+/* bscore: struct to store scores */
 static void score_board_by_struct(board_t board, board_score *bscore) {
-  group_score *gs;
-  int sb = 0, sw = 0;
-  int line;
-  int i, x0, y0, x, y, nb, nw;
+  group_score *gs; /* pointer to a group_score field in board_score */
+  int sb = 0, sw = 0; /* score of black & white */
+  int line; /* line 0~3  */
+  int i, x0, y0, x, y, nb, nw; /* iteration variables */
   /* clear fields */
   memset(bscore, 0, sizeof(board_score));
   /* iterate each line */
@@ -196,11 +201,15 @@ static void score_board_by_struct(board_t board, board_score *bscore) {
 }
 
 /* update board_score struct by difference */
+/* bscore: current board scores */
+/* newpos: new piece */
+/* role: role of new piece */
+/* remove: place (0) or remove (nonzero) */
 static void score_struct_delta(board_score *bscore, pos *newpos, int role, int remove) {
-  group_score *gs;
-  int db, dw;
-  int x0, y0, k, x, y, i;
-  int line;
+  group_score *gs; /* pointer to a group_score field in board_score */
+  int db, dw; /* delta of score of black & white */
+  int x0, y0, k, x, y, i; /* iteration variables */
+  int line; /* line 0~3 */
   /* iterate each line */
   for (line=0; line<4; line++)
     /* iterate each group containing newpos */
@@ -251,14 +260,15 @@ static void score_struct_delta(board_score *bscore, pos *newpos, int role, int r
 }
 
 /* find up to num points with highest scores */
-/* posarr is used to receive the points with scores in descending order */
+/* scores: scores of each points on board */
+/* posarr is used to receive up to num points with scores in descending order */
 /* return value is the actual number of points received */
 static int find_max_points(int scores[BOARD_W][BOARD_H], board_t board, int role, pos *posarr, int num) {
-  int i, j, k;
-  int maxscores[64] = {0};
-  int score;
-  pos p;
-  int n = 0;
+  int i, j, k; /* iteration variables */
+  int maxscores[64] = {0}; /* record of max scores */
+  int score; /* score of a point */
+  pos p; /* position */
+  int n = 0; /* record of num of actually obtained points  */
   /* iterate each point */
   for (i=0; i<BOARD_W; i++)
     for (j=0; j<BOARD_H; j++) {
@@ -492,20 +502,20 @@ static int negamax_parallel(
   board_score bs;
   /* initial alpha and beta values */
   int alpha = -SCORE_INF, beta = SCORE_INF;
-  int i, j, k;
+  int i, j, k; /* iteration variables */
   int n, t;
-  pos maxpos[MAXPOS_LEN];
-  int scores[MAXPOS_LEN];
-  pos tmppos;
-  int tmpscore;
-  negamax_param param[PARALLEL_THREADS];
-  pthread_t tid[PARALLEL_THREADS];
-  pthread_mutex_t mutex;
-  int signaled = 0;
-  int exit = 0;
-  signal_param sparam;
-  pthread_t stid;
-  unsigned long long inittime = pai_time();
+  pos maxpos[MAXPOS_LEN]; /* points with max scores */
+  int scores[MAXPOS_LEN]; /* max scores */
+  pos tmppos; /* temp variable for sorting */
+  int tmpscore; /* temp variable for sorting */
+  negamax_param param[PARALLEL_THREADS]; /* searching thread parameters */
+  pthread_t tid[PARALLEL_THREADS]; /* searching thread ids */
+  pthread_mutex_t mutex; /* mutex for sync */
+  int signaled = 0; /* timeout flag */
+  int exit = 0; /* exit flag */
+  signal_param sparam; /* signal thread parameter */
+  pthread_t stid; /* signal thread id */
+  unsigned long long inittime = pai_time(); /* initial time */
 
   /* set up signal thread */
   sparam.inittime = inittime;
@@ -602,6 +612,7 @@ static int negamax_parallel(
 }
 
 /* callback of AI, using game tree searching */
+/* see pai.h for specification */
 static int ai_callback(
     int role,
     int action,
@@ -613,8 +624,6 @@ static int ai_callback(
 
 {
   int i, n;
-  int num;
-  int scores[BOARD_W][BOARD_H];
   pos maxpos[64];
   int piece = role+1;
   int maxscore = 0;
@@ -656,6 +665,7 @@ static int ai_callback(
 }
 
 /* register an AI player */
+/* prototype in ai.h */
 int ai_register_player(int role, int aitype) {
   hashtable_init();
   return pai_register_player(role, ai_callback, 0, 1);
