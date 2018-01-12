@@ -36,23 +36,6 @@ static hash_bin m_hashbin[256]; /* subscript = high byte of hash */
 /* initialized state */
 static int m_init = 0;
 
-/* convert board_t to deflate_t */
-void deflate_board(deflate_t def, board_t board) {
-  int i, j;
-  memset(def, 0, 64);
-  for (i=0; i<BOARD_W; i++)
-    for (j=0; j<BOARD_H; j++)
-      def[(i*BOARD_H+j)/4] |= board[i][j]<<((i*BOARD_H+j)%4)*2;
-}
-
-/* convert deflate_t to board_t */
-void inflate_board(board_t board, deflate_t def) {
-  int i, j;
-  for (i=0; i<BOARD_W; i++)
-    for (j=0; j<BOARD_H; j++)
-      board[i][j] = def[(i*BOARD_H+j)/4]>>((i*BOARD_H+j)%4)*2&3;
-}
-
 /* hash by board_t */
 HASHVALUE hash_board(board_t board) {
   int i, j, piece;
@@ -70,35 +53,11 @@ HASHVALUE hash_board(board_t board) {
   return value;
 }
 
-/* hash by deflate_t */
-HASHVALUE hash_deflate(deflate_t def) {
-  int i, piece;
-  HASHVALUE value = 0;
-  /* iterate all points */
-  for (i=0; i<BOARD_W*BOARD_H; i++) {
-    piece = def[i/4]>>(i%4)*2&3;
-    if (piece)
-      value ^= zobrist[i*piece];
-  }
-  return value;
-}
-
 /* apply delta and hash by board_t */
 HASHVALUE hash_board_apply_delta(HASHVALUE oldvalue, board_t board, int newx, int newy, int piece, int remove) {
   int index;
   index = newx*BOARD_H+newy;
   board[newx][newy] = remove ? I_FREE : piece;
-  return oldvalue ^ zobrist[index*piece];
-}
-
-/* apply delta and hash by deflate_t */
-HASHVALUE hash_deflate_apply_delta(HASHVALUE oldvalue, deflate_t def, int newx, int newy, int piece, int remove) {
-  int index;
-  char mask1, mask2;
-  index = newx*BOARD_H+newy;
-  mask1 = ~(3<<(index%4)*2);
-  mask2 = remove ? piece<<(index%4)*2 : 0;
-  def[index/4] = (def[index/4]&mask1)|mask2;
   return oldvalue ^ zobrist[index*piece];
 }
 
