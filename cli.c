@@ -16,6 +16,7 @@ static void cli_display(board_t board, pos *newest, char *msg, unsigned long lon
   system("clear");
 #endif
   printf("\n");
+  printf("         Work of Chen Yuxiao\n");
   /* iterate each row */
   for (i=0; i<BOARD_H; i++) {
     /* print row numbers */
