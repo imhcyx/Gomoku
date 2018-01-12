@@ -17,6 +17,7 @@ static void cli_display(board_t board, pos *newest, char *msg, unsigned long lon
   system("clear");
 #endif
   printf("\n");
+  printf("       Five in a Row Game v1.0\n");
   printf("         Work of Chen Yuxiao\n");
   /* iterate each row */
   for (i=0; i<BOARD_H; i++) {
