@@ -144,6 +144,7 @@ static inline int pat_match(board_t board, pos *newpos, int line, const char *pa
 }
 
 /* count pieces in a line */
+/* if allowspace, space is ignored when counting */
 static inline int count_line(board_t board, pos *newpos, int line, int allowspace) {
   int i, n;
   int x, y;
@@ -226,6 +227,7 @@ static inline int count_open_3(board_t board, pos *newpos, int line) {
 /* judge if any player has won */
 /* newpos indicates the newest placement */
 /* return value is the role of winner or -1 if no winner */
+/* prototype in judge.h */
 int judge(board_t board, pos *newpos) {
   int i, j, n;
   int x, y;
@@ -243,6 +245,7 @@ int judge(board_t board, pos *newpos) {
 /* return value is nonzero if banned */
 /* only black may encounter banned position */
 /* do not checkban for white */
+/* prototype in judge.h */
 int checkban(board_t board, pos *newpos) {
   int result;
   int i, lcount;

@@ -10,12 +10,14 @@
 #define ROLENAME(x) (x == ROLE_BLACK ? "black" : "white")
 
 /* display the board */
+/* see pai.h for specification */
 static void cli_display(board_t board, pos *newest, char *msg, unsigned long long time) {
   int i, j;
 #if !GOMOKU_DEBUG
   system("clear");
 #endif
   printf("\n");
+  printf("       Five in a Row Game v1.0\n");
   printf("         Work of Chen Yuxiao\n");
   /* iterate each row */
   for (i=0; i<BOARD_H; i++) {
@@ -146,6 +148,7 @@ static int cli_parse_coordinate(char *str, pos *p) {
 }
 
 /* callback for PAI interface */
+/* see pai.h for specification */
 static int cli_callback(
     int role,
     int action,
@@ -223,143 +226,15 @@ static int cli_callback(
 
 }
 
+/* prototype in cli.h */
 int cli_init() {
   /* register display callback */
   pai_register_display(cli_display);
   return 1;
 }
 
+/* prototype in cli.h */
 int cli_register_player(int role) {
   /* register role to use CLI */
   return pai_register_player(role, cli_callback, 0, 0);
-}
-
-/* run test mode */
-void cli_testmode() {
-  board_t board = {0};
-  deflate_t deflate;
-  pos p;
-  char buf[16];
-  FILE *file;
-  extern int judge(board_t,pos*);
-  extern int checkban(board_t,pos*);
-  while (1) {
-    /* display the board */
-    cli_display(board, 0, 0, 0);
-    printf("command>");
-    /* read command */
-    fgets(buf, sizeof(buf), stdin);
-    buf[strlen(buf)-1] = '\0';
-    switch (buf[0]) {
-      /* place black piece */
-      case 'b':
-        printf("pos:");
-        /* read coordinate */
-        fgets(buf, sizeof(buf), stdin);
-        buf[strlen(buf)-1] = '\0';
-        /* parse and check */
-        if (cli_parse_coordinate(buf, &p) &&
-            p.x >= 0 && p.x < BOARD_W &&
-            p.y >= 0 && p.y < BOARD_H)
-          board[p.x][p.y] = I_BLACK;
-        else
-          printf("invalid\n");
-        break;
-      /* place white piece */
-      case 'w':
-        printf("pos:");
-        /* read coordinate */
-        fgets(buf, sizeof(buf), stdin);
-        buf[strlen(buf)-1] = '\0';
-        if (cli_parse_coordinate(buf, &p) &&
-        /* parse and check */
-            p.x >= 0 && p.x < BOARD_W &&
-            p.y >= 0 && p.y < BOARD_H)
-          board[p.x][p.y] = I_WHITE;
-        else
-          printf("invalid\n");
-        break;
-      /* clear piece */
-      case 'c':
-        printf("pos:");
-        /* read coordinate */
-        fgets(buf, sizeof(buf), stdin);
-        buf[strlen(buf)-1] = '\0';
-        if (cli_parse_coordinate(buf, &p) &&
-        /* parse and check */
-            p.x >= 0 && p.x < BOARD_W &&
-            p.y >= 0 && p.y < BOARD_H)
-          board[p.x][p.y] = I_FREE;
-        else
-          printf("invalid\n");
-        break;
-      /* judge */
-      case 'j':
-        printf("pos:");
-        fgets(buf, sizeof(buf), stdin);
-        /* read coordinate */
-        buf[strlen(buf)-1] = '\0';
-        if (cli_parse_coordinate(buf, &p) &&
-        /* parse and check */
-            p.x >= 0 && p.x < BOARD_W &&
-            p.y >= 0 && p.y < BOARD_H)
-          printf("judge: %d\n", judge(board, &p));
-        else
-          printf("invalid\n");
-        break;
-      /* checkban */
-      case 'f': 
-        printf("pos:");
-        /* read coordinate */
-        fgets(buf, sizeof(buf), stdin);
-        buf[strlen(buf)-1] = '\0';
-        if (cli_parse_coordinate(buf, &p) &&
-        /* parse and check */
-            p.x >= 0 && p.x < BOARD_W &&
-            p.y >= 0 && p.y < BOARD_H)
-          printf("checkban: %d\n", checkban(board, &p));
-        else
-          printf("invalid\n");
-        break;
-      /* save board to file */
-      case 's':
-        printf("filename:");
-        /* read filename */
-        fgets(buf, sizeof(buf), stdin);
-        buf[strlen(buf)-1] = '\0';
-        /* open file */
-        file = fopen(buf, "wb");
-        if (!file) {
-          printf("failed\n");
-          break;
-        }
-        /* deflate the board */
-        deflate_board(deflate, board);
-        /* write to file */
-        fwrite(deflate, 1, sizeof(deflate), file);
-        fclose(file);
-        break;
-      /* load board from file */
-      case 'l':
-        printf("filename:");
-        /* read filename */
-        fgets(buf, sizeof(buf), stdin);
-        buf[strlen(buf)-1] = '\0';
-        /* open file */
-        file = fopen(buf, "rb");
-        if (!file) {
-          printf("failed\n");
-          break;
-        }
-        /* read from file */
-        fread(deflate, 1, sizeof(deflate), file);
-        fclose(file);
-        /* inflate the board */
-        inflate_board(board, deflate);
-        break;
-      /* quit */
-      case 'q':
-        return;
-    }
-  }
 }

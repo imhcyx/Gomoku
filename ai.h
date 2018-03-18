@@ -35,7 +35,7 @@
  *
  * Parameters:
  *    role: the role id
- *    aitype: the type of AI
+ *    aitype: the type of AI (currently unused)
  *
  * Return value:
  *    nonzero for success, otherwise 0
