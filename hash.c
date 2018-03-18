@@ -10,17 +10,11 @@
 
 /* hash table node definition */
 typedef struct _hash_node {
-  /* next node in this chain */
   struct _hash_node *next;
-  /* hash value */
   HASHVALUE hash;
-  /* current move count */
   int move;
-  /* current depth */
   int depth;
-  /* node type */
   hash_type type;
-  /* node value */
   int value;
 } hash_node;
 
@@ -42,8 +36,24 @@ static hash_bin m_hashbin[256]; /* subscript = high byte of hash */
 /* initialized state */
 static int m_init = 0;
 
+/* convert board_t to deflate_t */
+void deflate_board(deflate_t def, board_t board) {
+  int i, j;
+  memset(def, 0, 64);
+  for (i=0; i<BOARD_W; i++)
+    for (j=0; j<BOARD_H; j++)
+      def[(i*BOARD_H+j)/4] |= board[i][j]<<((i*BOARD_H+j)%4)*2;
+}
+
+/* convert deflate_t to board_t */
+void inflate_board(board_t board, deflate_t def) {
+  int i, j;
+  for (i=0; i<BOARD_W; i++)
+    for (j=0; j<BOARD_H; j++)
+      board[i][j] = def[(i*BOARD_H+j)/4]>>((i*BOARD_H+j)%4)*2&3;
+}
+
 /* hash by board_t */
-/* prototype in hash.h */
 HASHVALUE hash_board(board_t board) {
   int i, j, piece;
   int index;
@@ -60,8 +70,20 @@ HASHVALUE hash_board(board_t board) {
   return value;
 }
 
+/* hash by deflate_t */
+HASHVALUE hash_deflate(deflate_t def) {
+  int i, piece;
+  HASHVALUE value = 0;
+  /* iterate all points */
+  for (i=0; i<BOARD_W*BOARD_H; i++) {
+    piece = def[i/4]>>(i%4)*2&3;
+    if (piece)
+      value ^= zobrist[i*piece];
+  }
+  return value;
+}
+
 /* apply delta and hash by board_t */
-/* prototype in hash.h */
 HASHVALUE hash_board_apply_delta(HASHVALUE oldvalue, board_t board, int newx, int newy, int piece, int remove) {
   int index;
   index = newx*BOARD_H+newy;
@@ -69,8 +91,18 @@ HASHVALUE hash_board_apply_delta(HASHVALUE oldvalue, board_t board, int newx, in
   return oldvalue ^ zobrist[index*piece];
 }
 
+/* apply delta and hash by deflate_t */
+HASHVALUE hash_deflate_apply_delta(HASHVALUE oldvalue, deflate_t def, int newx, int newy, int piece, int remove) {
+  int index;
+  char mask1, mask2;
+  index = newx*BOARD_H+newy;
+  mask1 = ~(3<<(index%4)*2);
+  mask2 = remove ? piece<<(index%4)*2 : 0;
+  def[index/4] = (def[index/4]&mask1)|mask2;
+  return oldvalue ^ zobrist[index*piece];
+}
+
 /* initialize hash table */
-/* prototype in hash.h */
 void hashtable_init() {
   int i, j;
   /* if not initialized */
@@ -86,7 +118,6 @@ void hashtable_init() {
 }
 
 /* finalize hash table */
-/* prototype in hash.h */
 void hashtable_fini() {
   int i, j;
   hash_node *node, *next;
@@ -115,7 +146,6 @@ void hashtable_fini() {
 }
 
 /* store value to hash table */
-/* prototype in hash.h */
 /* thread-safe */
 void hashtable_store(HASHVALUE hash, int move, int depth, hash_type type, int value) {
   int i, j;
@@ -127,7 +157,7 @@ void hashtable_store(HASHVALUE hash, int move, int depth, hash_type type, int va
   pthread_mutex_lock(&m_hashbin[i].mutex[j]);
   /* allocate node */
   node = malloc(sizeof(hash_node));
-  /* exit on error in malloc */
+  /* error in malloc */
   if (!node) return;
   /* fill stuffs */
   node->hash = hash;
@@ -145,7 +175,6 @@ void hashtable_store(HASHVALUE hash, int move, int depth, hash_type type, int va
 }
 
 /* look up value in hash table */
-/* prototype in hash.h */
 /* thread-safe */
 int hashtable_lookup(HASHVALUE hash, int move, int depth, int alpha, int beta, int *pvalue) {
   int i, j;

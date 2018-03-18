@@ -29,4 +29,11 @@ int cli_init();
 
 int cli_register_player(int role);
 
+/*
+ * cli_testmode: run test mode (debug)
+ *
+ */
+
+void cli_testmode();
+
 #endif /* CLI_H */
